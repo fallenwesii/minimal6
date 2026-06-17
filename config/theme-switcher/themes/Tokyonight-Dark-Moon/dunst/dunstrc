@@ -1,0 +1,23 @@
+[global]
+    frame_color = "#589ed7"
+    separator_color = "#589ed7"
+    font = JetBrainsMono Nerd Font 10
+    corner_radius = 7
+    background = "#222436"
+    foreground = "#e9e9ed"
+
+[urgency_low]
+    background = "#222436"
+    foreground = "#565f89"
+    timeout = 5
+
+[urgency_normal]
+    background = "#222436"
+    foreground = "#e9e9ed"
+    timeout = 10
+
+[urgency_critical]
+    background = "#222436"
+    foreground = "#589ed7"
+    frame_color = "#ff5555"
+    timeout = 0

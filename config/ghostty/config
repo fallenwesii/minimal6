@@ -1,0 +1,21 @@
+# window-decoration = none
+window-decoration = auto
+background-opacity = 0.50
+window-padding-x = 4
+window-padding-y = 4
+
+# Centers the surface when it doesn't fit the window size perfectly
+window-padding-balance = true
+
+font-family = "JetBrainsMono Nerd Font Mono"
+font-family = "JetBrains Mono NerdFont"
+font-size = 16
+
+
+
+
+#use kitty default theme
+theme = Kitty Default 
+
+#use minimal6 theme colours
+#config-file = current-theme  

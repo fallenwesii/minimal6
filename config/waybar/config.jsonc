@@ -1,0 +1,153 @@
+{
+  "layer": "top",
+  "position": "top",
+  "margin-bottom": 0,
+  "modules-left": [
+    "clock",
+    "hyprland/workspaces",
+    "tray"
+  ],
+  "modules-center": [
+    "hyprland/window"
+  ],
+  "modules-right": [
+    "custom/network_speed",
+    "custom/tuned",
+    "memory",
+    "cpu",
+    "pulseaudio",
+    "battery",
+    "custom/nightmode",
+    "custom/bluetooth",
+    "network",
+    "custom/powermenu"
+  ],
+  "tray": {
+    "icon-size": 16,
+    "spacing": 8
+  },
+  "clock": {
+    "format": " 󰸗 {:%I:%M %p} ",
+    "interval": 60,
+    "tooltip": true,
+    "tooltip-format": "{:%A, %d %B %Y}"
+  },
+  "hyprland/workspaces": {
+    "format": "{icon}",
+    "separate-outputs": false,
+    "active-only": false,
+    "all-outputs": false,
+    "format-icons": {
+      "1": "1",
+      "2": "2",
+      "3": "3",
+      "4": "4",
+      "5": "5",
+      "6": "6",
+      "7": "7",
+      "8": "8",
+      "9": "9",
+      "10": "10",
+      "11": "1",
+      "12": "2",
+      "13": "3",
+      "14": "4",
+      "15": "5",
+      "16": "6",
+      "17": "7",
+      "18": "8",
+      "19": "9",
+      "110": "10",
+      "21": "1",
+      "22": "2",
+      "23": "3",
+      "24": "4",
+      "25": "5",
+      "26": "6",
+      "27": "7",
+      "28": "8",
+      "29": "9",
+      "210": "10"
+    }
+  },
+  "hyprland/window": {
+    "format": "{}"
+  },
+  "memory": {
+    "format": "󰫗 {}% ",
+    "tooltip": true,
+    "tooltip-format": "Memory: {used:0.1f}G / {total:0.1f}G ({percentage}%)"
+  },
+  "cpu": {
+    "format": " {usage}% ",
+    "tooltip": true,
+    "tooltip-format": "CPU: {usage}%\nLoad: {load}\nAvg frequency: {avg_frequency} GHz"
+  },
+  "pulseaudio": {
+    "format": " {volume}% ",
+    "tooltip": true,
+    "tooltip-format": "{desc}: {volume}%",
+    "scroll-step": 1,
+    "on-click": "pavucontrol"
+  },
+  "custom/nightmode": {
+    "exec": "bash -lc '~/.config/waybar/scripts/hyprsunset.sh status'",
+    "return-type": "json",
+    "interval": 2,
+    "tooltip": true,
+    "on-click": "bash -lc '~/.config/waybar/scripts/hyprsunset.sh toggle'"
+  },
+  "custom/bluetooth": {
+    "format": "󰂯 ",
+    "tooltip": true,
+    "tooltip-format": "Bluetooth",
+    "on-click": "blueman-manager",
+    "on-click-right": "blueman-adapters"
+  },
+  "network": {
+    "format": "󰖩 ",
+    "tooltip": true,
+    "tooltip-format-wifi": "{essid} ({signalStrength}%)\n{ipaddr}",
+    "tooltip-format-ethernet": "{ifname}\n{ipaddr}",
+    "tooltip-format-disconnected": "Disconnected",
+    "tooltip-format-disabled": "Wi-Fi disabled",
+    "interval": 2,
+    "on-click": "kitty -e nmtui"
+  },
+  "battery": {
+    "format": "{capacity}% {icon} ",
+    "format-charging": "{capacity}% {icon}  ",
+    "format-plugged": "{capacity}% {icon}  ",
+    "format-full": "{capacity}% {icon} ",
+    "format-discharging": "{capacity}% {icon} ",
+    "tooltip": true,
+    // "tooltip-format": "Battery: {capacity}%\nStatus: {status}\nTime: {time}",
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  "custom/powermenu": {
+    "format": " ",
+    "tooltip": false,
+    "on-click": "exec wlogout -p layer-shell"
+  },
+  "custom/tuned": {
+    "exec": "tuned-adm active | awk '{ if ($4 == \"powersave\") print \"{\\\"text\\\":\\\"\\\",\\\"class\\\":\\\"powersave\\\"}\"; else if ($4 == \"balanced\") print \"{\\\"text\\\":\\\"󰾆\\\",\\\"class\\\":\\\"balanced\\\"}\"; else print \"{\\\"text\\\":\\\"󰓅\\\",\\\"class\\\":\\\"performance\\\"}\" }'",
+    "return-type": "json",
+    "interval": 5,
+    "tooltip": true,
+    "tooltip-format": "Left-Click: Powersave\nRight-Click: Balanced",
+    "on-click": "sudo tuned-adm profile powersave && pkill -SIGUSR2 waybar && kitty notify-send 'Powersaving mode'",
+    "on-click-right": "sudo tuned-adm profile balanced && pkill -SIGUSR2 waybar"
+  },
+  "custom/network_speed": {
+    "exec": "~/.local/bin/net-speed.sh",
+    "format": "{}",
+    "interval": 2,
+    "tooltip": false
+  }
+}

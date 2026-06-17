@@ -1,0 +1,10 @@
+window { font-family: "JetBrainsMono Nerd Font"; background-color: rgba(2d, 2d, 2d, 0.85); }
+button { background-repeat: no-repeat; background-position: center; background-size: 100px; border: 2px solid #666666; background-color: #2d2d2d; color: #e3e3e3; margin: 5px; transition: all 0.2s; }
+button:hover { border: 2px solid #999999; background-color: #666666; color: #999999; }
+button:focus { border: 2px solid #999999; background-color: #999999; color: #2d2d2d; }
+#lock { background-image: image(url("lock.png")); }
+#logout { background-image: image(url("logout.png")); }
+#suspend { background-image: image(url("sleep.png")); }
+#shutdown { background-image: image(url("power.png")); }
+#reboot { background-image: image(url("restart.png")); }
+#hibernate { background-image: image(url("restart.png")); }

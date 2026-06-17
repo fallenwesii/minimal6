@@ -1,0 +1,65 @@
+/* Theme: Catppuccin-Dark-Frappe */
+* {
+  font-family: "JetBrainsMono Nerd Font";
+}
+
+window#waybar {
+  background-color: #303446;
+  color: #eff1f5;
+}
+
+/* Tooltips / Popups styling - Themed background and border */
+tooltip {
+  background: #303446;
+  border: 1px solid #8caaee;
+  border-radius: 8px;
+}
+
+tooltip label {
+  color: #eff1f5;
+  padding: 6px;
+}
+
+window#waybar #clock {
+  color: #8caaee;
+}
+
+window#waybar #workspaces button {
+  color: #737994;
+  padding: 0 4px;
+}
+
+window#waybar #workspaces button.active {
+  color: #8caaee;
+  font-weight: bold;
+}
+
+window#waybar #workspaces button:hover {
+  color: #303446;
+  background-color: #8caaee;
+}
+
+window#waybar #window {
+  color: #8caaee;
+}
+
+/* Iconic Modules - Clean appearance, no hover background */
+window#waybar #memory, 
+window#waybar #cpu, 
+window#waybar #pulseaudio, 
+window#waybar #battery, 
+window#waybar #custom-nightmode, 
+window#waybar #custom-bluetooth, 
+window#waybar #network, 
+window#waybar #custom-powermenu, 
+window#waybar #custom-tuned, 
+window#waybar #custom-network_speed {
+  color: #8caaee;
+  padding: 0 4px;
+  margin: 0;
+}
+
+window#waybar #battery.charging,
+window#waybar #battery.plugged {
+  color: #8caaee;
+}

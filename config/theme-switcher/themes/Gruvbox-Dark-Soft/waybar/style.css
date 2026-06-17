@@ -1,0 +1,65 @@
+/* Theme: Gruvbox-Dark-Soft */
+* {
+  font-family: "JetBrainsMono Nerd Font";
+}
+
+window#waybar {
+  background-color: #32302f;
+  color: #fbf1c7;
+}
+
+/* Tooltips / Popups styling - Themed background and border */
+tooltip {
+  background: #32302f;
+  border: 1px solid #83a598;
+  border-radius: 8px;
+}
+
+tooltip label {
+  color: #fbf1c7;
+  padding: 6px;
+}
+
+window#waybar #clock {
+  color: #83a598;
+}
+
+window#waybar #workspaces button {
+  color: #928374;
+  padding: 0 4px;
+}
+
+window#waybar #workspaces button.active {
+  color: #83a598;
+  font-weight: bold;
+}
+
+window#waybar #workspaces button:hover {
+  color: #32302f;
+  background-color: #83a598;
+}
+
+window#waybar #window {
+  color: #83a598;
+}
+
+/* Iconic Modules - Clean appearance, no hover background */
+window#waybar #memory, 
+window#waybar #cpu, 
+window#waybar #pulseaudio, 
+window#waybar #battery, 
+window#waybar #custom-nightmode, 
+window#waybar #custom-bluetooth, 
+window#waybar #network, 
+window#waybar #custom-powermenu, 
+window#waybar #custom-tuned, 
+window#waybar #custom-network_speed {
+  color: #83a598;
+  padding: 0 4px;
+  margin: 0;
+}
+
+window#waybar #battery.charging,
+window#waybar #battery.plugged {
+  color: #83a598;
+}

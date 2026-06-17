@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="64"
+   height="64"
+   version="1.1"
+   id="svg6"
+   sodipodi:docname="audio-input-microphone.svg"
+   inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview6"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="18.890625"
+     inkscape:cx="32"
+     inkscape:cy="32"
+     inkscape:current-layer="svg6" />
+  <defs
+     id="defs4">
+    <radialGradient
+       xlink:href="#a"
+       id="d"
+       cx="-28.581"
+       cy="-24.583"
+       r="15"
+       fx="-28.581"
+       fy="-24.583"
+       gradientTransform="matrix(2.20888 0 0 1.91437 25.387 29.26)"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       xlink:href="#b"
+       id="e"
+       cx="32.106"
+       cy="22.072"
+       r="20.067"
+       fx="32.106"
+       fy="22.072"
+       gradientTransform="matrix(1.08597 0 0 .99745 -2.76 1.195)"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       xlink:href="#b"
+       id="c"
+       cx="19.609"
+       cy="61.693"
+       r="17.052"
+       fx="19.609"
+       fy="61.693"
+       gradientTransform="rotate(-15 -330.084 171.214)scale(2.30204 2.59553)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="a">
+      <stop
+         offset="0"
+         style="stop-color:#313131;stop-opacity:1"
+         id="stop1" />
+      <stop
+         offset="1"
+         style="stop-color:#464646;stop-opacity:1"
+         id="stop2" />
+    </linearGradient>
+    <linearGradient
+       id="b">
+      <stop
+         offset="0"
+         style="stop-color:#4c4c4c;stop-opacity:1"
+         id="stop3" />
+      <stop
+         offset="1"
+         style="stop-color:#727272;stop-opacity:1"
+         id="stop4" />
+    </linearGradient>
+    <filter
+       id="f"
+       width="1.203432"
+       height="1.1429166"
+       x="-0.10171519"
+       y="-0.071458304"
+       style="color-interpolation-filters:sRGB">
+      <feGaussianBlur
+         stdDeviation="1.559"
+         id="feGaussianBlur4" />
+    </filter>
+  </defs>
+  <g
+     id="g6">
+    <g
+       transform="translate(.367 2.536)scale(.98525)"
+       id="g5">
+      <path
+         d="m29.896 39.912-.002.002h-.002l-.002.002v.002l-.002.002v14.114l-12.66.003a2.173 2.173 134.992 0 0-2.172 2.173v.087a2.17 2.17 45 0 0 2.172 2.173h29.76a2.17 2.17 135 0 0 2.171-2.173v-.087a2.173 2.173 45.008 0 0-2.172-2.173l-12.66-.003V39.918h-.002v-.002l-.002-.002h-.002l-.002-.002z"
+         style="fill:url(#c);fill-opacity:1;stroke:none;stroke-width:.2;stroke-linecap:round;stroke-linejoin:round"
+         id="path4" />
+      <rect
+         width="34.66"
+         height="26"
+         x="-36"
+         y="-45"
+         rx="13"
+         ry="13"
+         style="fill:url(#d)"
+         transform="rotate(90)scale(-1 1)"
+         id="rect4" />
+      <path
+         d="M12.062 25.798c1.302 9.91 9.78 17.56 20.045 17.56s18.743-7.65 20.046-17.56c.192-1.46-1.021-2.66-2.494-2.66-1.099 0-1.97 1.055-2.163 2.33C46.371 32.959 39.91 38.7 32.107 38.7s-14.263-5.741-15.389-13.23c-.191-1.276-1.22-2.33-2.512-2.33-1.28 0-2.336 1.2-2.144 2.66"
+         style="fill:url(#e);stroke-width:.210969;stroke-linecap:round;stroke-linejoin:round"
+         id="path5" />
+    </g>
+    <path
+       d="M31.902 5.12a12.207 12.207 0 0 0-12.235 12.233v8.15a12.207 12.207 0 0 0 12.235 12.232 12.205 12.205 0 0 0 12.232-12.232v-8.15A12.205 12.205 0 0 0 31.902 5.12M15.155 25.634c-1.204 0-2.198 1.128-2.017 2.502 1.136 8.643 8.075 15.46 16.775 16.41v10.16L18 54.71a2.045 2.045 0 0 0-2.043 2.045v.082A2.044 2.044 0 0 0 18 58.88h28.004a2.044 2.044 0 0 0 2.045-2.043v-.082a2.045 2.045 0 0 0-2.045-2.045l-11.912-.004v-10.16c8.7-.95 15.638-7.767 16.773-16.41.18-1.374-.96-2.502-2.345-2.502-1.034 0-1.855.992-2.035 2.193-1.06 7.047-7.14 12.45-14.483 12.45-7.342 0-13.422-5.405-14.48-12.452-.18-1.2-1.15-2.191-2.366-2.191"
+       style="mix-blend-mode:normal;fill:none;fill-opacity:1;stroke:#000;stroke-width:.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;filter:url(#f)"
+       transform="translate(-1.504 -1.504)scale(1.047)"
+       id="path6" />
+  </g>
+</svg>

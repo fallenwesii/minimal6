@@ -1,0 +1,61 @@
+[global]
+    monitor = 0
+    follow = mouse
+    width = 300
+    height = 300
+    origin = top-right
+    offset = 10x10
+    scale = 0
+    notification_limit = 5
+    
+    # Appearance
+    transparency = 0
+    separator_height = 2
+    padding = 12
+    horizontal_padding = 12
+    text_icon_padding = 10
+    frame_width = 2
+    frame_color = "#7dd3fc"
+    gap_size = 5
+    font = JetBrainsMono Nerd Font 10
+    line_height = 0
+    
+    # Progress bar
+    progress_bar = true
+    progress_bar_height = 10
+    progress_bar_frame_width = 1
+    progress_bar_min_width = 150
+    progress_bar_max_width = 300
+    
+    # Behavior
+    idle_threshold = 120
+    show_age_threshold = 60
+    sticky_history = yes
+    history_length = 20
+    dmenu = /usr/bin/wofi -d
+    browser = /usr/bin/brave
+    always_run_script = true
+    title = Dunst
+    class = Dunst
+    corner_radius = 7
+    
+    # Colors (Matching Waybar/Wofi)
+    background = "#0a0a0a"
+    foreground = "#ffffff"
+
+[urgency_low]
+    background = "#0a0a0a"
+    foreground = "#737373"
+    timeout = 5
+
+[urgency_normal]
+    background = "#0a0a0a"
+    foreground = "#ffffff"
+    frame_color = "#0ea5e9"
+    timeout = 10
+
+[urgency_critical]
+    background = "#0a0a0a"
+    foreground = "#ffffff"
+    frame_color = "#f43f5e"
+    timeout = 0

@@ -1,0 +1,5 @@
+foreground = #eff1f5
+background = #303446
+selection-foreground = #303446
+selection-background = #8caaee
+cursor-color = #8caaee

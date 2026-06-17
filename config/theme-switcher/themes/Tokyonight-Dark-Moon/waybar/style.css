@@ -1,0 +1,65 @@
+/* Theme: Tokyonight-Dark-Moon */
+* {
+  font-family: "JetBrainsMono Nerd Font";
+}
+
+window#waybar {
+  background-color: #222436;
+  color: #e9e9ed;
+}
+
+/* Tooltips / Popups styling - Themed background and border */
+tooltip {
+  background: #222436;
+  border: 1px solid #589ed7;
+  border-radius: 8px;
+}
+
+tooltip label {
+  color: #e9e9ed;
+  padding: 6px;
+}
+
+window#waybar #clock {
+  color: #589ed7;
+}
+
+window#waybar #workspaces button {
+  color: #565f89;
+  padding: 0 4px;
+}
+
+window#waybar #workspaces button.active {
+  color: #589ed7;
+  font-weight: bold;
+}
+
+window#waybar #workspaces button:hover {
+  color: #222436;
+  background-color: #589ed7;
+}
+
+window#waybar #window {
+  color: #589ed7;
+}
+
+/* Iconic Modules - Clean appearance, no hover background */
+window#waybar #memory, 
+window#waybar #cpu, 
+window#waybar #pulseaudio, 
+window#waybar #battery, 
+window#waybar #custom-nightmode, 
+window#waybar #custom-bluetooth, 
+window#waybar #network, 
+window#waybar #custom-powermenu, 
+window#waybar #custom-tuned, 
+window#waybar #custom-network_speed {
+  color: #589ed7;
+  padding: 0 4px;
+  margin: 0;
+}
+
+window#waybar #battery.charging,
+window#waybar #battery.plugged {
+  color: #589ed7;
+}

@@ -1,0 +1,6 @@
+@import url("resource:///org/gnome/theme/gtk.css");
+
+window, main, .background {
+    /* Adjust the 0.85 (85% solid) up or down to control the transparency */
+    background-color: rgba(30, 30, 46, 0.85) !important; 
+}

@@ -1,0 +1,65 @@
+/* Theme: WhiteSur-Dark */
+* {
+  font-family: "JetBrainsMono Nerd Font";
+}
+
+window#waybar {
+  background-color: #1e1e1e;
+  color: #ffffff;
+}
+
+/* Tooltips / Popups styling - Themed background and border */
+tooltip {
+  background: #1e1e1e;
+  border: 1px solid #b0b0b0;
+  border-radius: 8px;
+}
+
+tooltip label {
+  color: #ffffff;
+  padding: 6px;
+}
+
+window#waybar #clock {
+  color: #b0b0b0;
+}
+
+window#waybar #workspaces button {
+  color: #777777;
+  padding: 0 4px;
+}
+
+window#waybar #workspaces button.active {
+  color: #b0b0b0;
+  font-weight: bold;
+}
+
+window#waybar #workspaces button:hover {
+  color: #1e1e1e;
+  background-color: #b0b0b0;
+}
+
+window#waybar #window {
+  color: #b0b0b0;
+}
+
+/* Iconic Modules - Clean appearance, no hover background */
+window#waybar #memory, 
+window#waybar #cpu, 
+window#waybar #pulseaudio, 
+window#waybar #battery, 
+window#waybar #custom-nightmode, 
+window#waybar #custom-bluetooth, 
+window#waybar #network, 
+window#waybar #custom-powermenu, 
+window#waybar #custom-tuned, 
+window#waybar #custom-network_speed {
+  color: #b0b0b0;
+  padding: 0 4px;
+  margin: 0;
+}
+
+window#waybar #battery.charging,
+window#waybar #battery.plugged {
+  color: #b0b0b0;
+}

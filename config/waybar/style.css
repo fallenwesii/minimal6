@@ -1,0 +1,133 @@
+@import "theme.css";
+* {
+  font-family: "Jetbrains Mono NerdFont";
+}
+
+#waybar {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+/* LEFT MODULES */
+
+#clock {
+  color: #fff;
+}
+
+#workspaces button {
+  color: #737373;
+  padding-left: 4px;
+  padding-right: 4px;
+  border-radius: 0px;
+}
+
+
+#workspaces button.active {
+  color: #84cc16;
+}
+
+#tray {
+  padding-left: 4px;
+}
+
+/* CENTER MODULE */
+
+#window {
+  color: #fff;
+}
+
+/* RIGHT MODULES */
+
+#memory {
+  color: #d946ef;
+  margin-right: 4px;
+  margin-left: 6px;
+}
+
+#cpu {
+  color: #0ea5e9;
+  margin-right: 4px;
+}
+
+#pulseaudio {
+  color: #14b8a6;
+  margin-right: 4px;
+}
+
+#battery {
+  color: #facc15;
+  margin-right: 4px;
+}
+
+#battery.charging,
+#battery.plugged {
+  color: #84cc16;
+}
+
+#custom-nightmode {
+  color: #f97316;
+  margin-right: 8px;
+}
+
+#custom-bluetooth {
+  color: #3b82f6;
+  margin-right: 8px;
+}
+
+#network {
+  color: #3b82f6;
+  margin-right: 8px;
+}
+
+#custom-powermenu {
+  color: #f43f5e;
+}
+
+#custom-tuned {
+    padding-left: 4px;
+    padding-right: 5px;
+    margin-right: 5px;
+    margin-left: 4px;
+}
+
+#custom-tuned.powersave {
+    color: #a6e3a1;
+}
+
+#custom-tuned.balanced {
+    color: #f9e2af;
+}
+
+#custom-tuned.performance {
+    color: #f38ba8;
+}
+
+#custom-network_speed {
+    color: #89b4fa;
+    padding-left: 4px;
+    padding-right: 3px;    
+    margin-left: 3px;
+    margin-right: 3px;    
+    letter-spacing: 0.5px; 
+}
+
+
+/* --- Waybar Modules Spacing --- */
+
+window#waybar #custom-network_speed {
+  margin-left: 6px;
+  margin-right: 10px; /* Generous gap after the speed indicators */
+}
+
+window#waybar #custom-tuned {
+  margin-right: 12px; /* Space between tuned profile and RAM */
+}
+
+window#waybar #memory {
+  margin-right: 1px; /* Space between RAM and CPU */
+}
+
+window#waybar #cpu {
+  margin-right: 1px; /* Space between CPU and Audio */
+  margin-left : 0px;
+}

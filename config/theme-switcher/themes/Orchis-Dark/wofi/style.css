@@ -1,0 +1,4 @@
+window { background-color: #2d2d2d; color: #e3e3e3; font-family: "JetBrainsMono Nerd Font"; }
+#input { background-color: #666666; color: #e3e3e3; }
+#entry:selected { background-color: #999999; color: #2d2d2d; }
+#entry:hover { background-color: #999999; color: #2d2d2d; }
