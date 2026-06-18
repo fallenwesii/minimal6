@@ -13,6 +13,6 @@ Installs packages (pacman + AUR), links configs, generates themes, and applies G
 
 ## Keybinds
 
-Press `Super + H` in-session for the full cheatsheet.
+Press `Super + H` in hyprland session to view all keybindings.
 
 
