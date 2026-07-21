@@ -1,0 +1,68 @@
+@import "colors.css";
+
+window {
+  background: @background;
+  border: none;
+  border-radius: 12px;
+}
+
+* {
+  font-family: "JetBrains Mono";
+  color: @on_surface_variant;
+}
+
+#scroll {
+  padding: 0.5rem;
+}
+
+#input {
+  background-color: @surface_container;
+  color: @on_surface;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  margin: 0.5rem;
+  outline: none;
+}
+
+#inner-box {
+  margin: 0.5rem;
+  font-size: 1rem;
+}
+
+#img {
+  margin: 10px 10px;
+}
+
+#entry {
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.5rem 0.4rem 0.8rem; /* extra left padding for the dot */
+  color: @on_surface_variant;
+  background: transparent;
+  outline: none;
+  border-left: 3px solid transparent; /* invisible border by default */
+}
+
+#text {
+  color: @on_surface_variant;
+}
+
+#entry:selected {
+  background: transparent;           /* no bg change */
+  color: @primary;                   /* make text orange */
+  outline: none;
+  border-left: 3px solid @primary;   /* this is our "dot/bar" */
+}
+
+#entry:selected #text {
+  color: @primary !important;
+}
+
+#entry:selected #img {
+  opacity: 1;
+}
+
+#entry:hover {
+  border-left: 3px solid alpha(@primary, 0.5);
+}

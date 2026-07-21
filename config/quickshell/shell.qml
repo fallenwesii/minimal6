@@ -13,6 +13,8 @@ ShellRoot {
     property int cornerRadius: 14
     property color cornerColor: "#05070a"
     property string backlightDevice: "intel_backlight"
+    property string matugenColorsPath: "/home/wesii/.config/quickshell/generated/colors.json"
+    property var matugenColors: ({})
 
     property string osdIcon: "audio-volume-high-symbolic"
     property string osdLabel: "Volume"
@@ -27,6 +29,33 @@ ShellRoot {
         osdMuted = muted ?? false;
         shouldShowOsd = true;
         osdHideTimer.restart();
+    }
+
+    function loadMatugenColors() {
+        try {
+            const raw = matugenColorsFile.text().trim();
+            if (raw.length > 0)
+                matugenColors = JSON.parse(raw);
+        } catch (error) {
+            console.warn("Failed to load matugen colors:", error);
+        }
+    }
+
+    function md3Color(name, fallback) {
+        return matugenColors?.md3?.[name] ?? fallback;
+    }
+
+    function volumeIcon() {
+        if (Pipewire.defaultAudioSink?.audio.muted)
+            return "audio-volume-muted-symbolic";
+
+        const volume = Pipewire.defaultAudioSink?.audio.volume ?? 0;
+        if (volume <= 0.01)
+            return "audio-volume-low-symbolic";
+        if (volume < 0.5)
+            return "audio-volume-medium-symbolic";
+
+        return "audio-volume-high-symbolic";
     }
 
     function screenHasFullscreen(screen) {
@@ -48,18 +77,32 @@ ShellRoot {
         ignoreUnknownSignals: true
 
         function onVolumesChanged() {
-            shell.showOsd(Pipewire.defaultAudioSink?.audio.muted ? "audio-volume-muted-symbolic" : "audio-volume-high-symbolic",
+            shell.showOsd(shell.volumeIcon(),
                           "Volume",
                           Pipewire.defaultAudioSink?.audio.volume ?? 0,
                           Pipewire.defaultAudioSink?.audio.muted ?? false);
         }
 
         function onMutedChanged() {
-            shell.showOsd(Pipewire.defaultAudioSink?.audio.muted ? "audio-volume-muted-symbolic" : "audio-volume-high-symbolic",
+            shell.showOsd(shell.volumeIcon(),
                           "Volume",
                           Pipewire.defaultAudioSink?.audio.volume ?? 0,
                           Pipewire.defaultAudioSink?.audio.muted ?? false);
         }
+    }
+
+    FileView {
+        id: matugenColorsFile
+        path: shell.matugenColorsPath
+        preload: true
+        blockLoading: true
+        watchChanges: true
+        printErrors: false
+
+        onFileChanged: reload()
+        onLoaded: shell.loadMatugenColors()
+
+        Component.onCompleted: shell.loadMatugenColors()
     }
 
     FileView {
@@ -192,8 +235,8 @@ ShellRoot {
             Rectangle {
                 anchors.fill: parent
                 radius: 8
-                color: "#d90b0f14"
-                border.color: "#25ffffff"
+                color: shell.md3Color("surface_container_high", "#0b0f14")
+                border.color: shell.md3Color("outline_variant", "#25313a")
                 border.width: 1
 
                 RowLayout {
@@ -214,7 +257,7 @@ ShellRoot {
 
                         Text {
                             text: shell.osdMuted ? shell.osdLabel + " muted" : shell.osdLabel
-                            color: "#f2f5f8"
+                            color: shell.md3Color("on_surface", "#f2f5f8")
                             font.pixelSize: 13
                             elide: Text.ElideRight
                             Layout.fillWidth: true
@@ -224,7 +267,7 @@ ShellRoot {
                             Layout.fillWidth: true
                             implicitHeight: 8
                             radius: 4
-                            color: "#2dffffff"
+                            color: shell.md3Color("surface_variant", "#2d3842")
 
                             Rectangle {
                                 anchors.left: parent.left
@@ -232,14 +275,14 @@ ShellRoot {
                                 anchors.bottom: parent.bottom
                                 width: parent.width * shell.osdValue
                                 radius: parent.radius
-                                color: shell.osdMuted ? "#78818c" : "#88c0d0"
+                                color: shell.osdMuted ? shell.md3Color("outline", "#78818c") : shell.md3Color("primary", "#88c0d0")
                             }
                         }
                     }
 
                     Text {
                         text: Math.round(shell.osdValue * 100) + "%"
-                        color: "#cbd5df"
+                        color: shell.md3Color("on_surface_variant", "#cbd5df")
                         font.pixelSize: 13
                         horizontalAlignment: Text.AlignRight
                         Layout.preferredWidth: 42

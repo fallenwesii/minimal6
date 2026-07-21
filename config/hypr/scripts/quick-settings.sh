@@ -13,8 +13,6 @@ THEME_DIR="$HOME/.config/theme-switcher"
 
 # Theme colors for banner
 CURRENT_THEME_FILE="$THEME_DIR/current_theme"
-ACCENT="#83a598"
-TEXT="#fbf1c7"
 if [ -f "$CURRENT_THEME_FILE" ]; then
   current_theme=$(cat "$CURRENT_THEME_FILE")
   theme_colour_file="$THEME_DIR/themes/$current_theme/hyprland-colors.conf"

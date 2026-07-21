@@ -1,133 +1,134 @@
-@import "theme.css";
+@import "colors.css";
+
 * {
   font-family: "Jetbrains Mono NerdFont";
 }
 
 #waybar {
-  background: #0a0a0a;
-  color: #fff;
+  background: @background;
+  color: @on_surface_variant; 
 }
 
-/* LEFT MODULES */
+/* --- LEFT MODULES (Workspaces & Clock) --- */
 
 #clock {
-  color: #fff;
+  color:  @primary; 
 }
 
 #workspaces button {
-  color: #737373;
-  padding-left: 4px;
-  padding-right: 4px;
-  border-radius: 0px;
+  color: @outline; 
+  padding-top: 0px;
+  padding-bottom: 0px;
+  padding-left: 6px;
+  padding-right: 6px;
+  margin: 0px 2px; 
+  border-radius: 4px;
 }
 
-
 #workspaces button.active {
-  color: #84cc16;
+  /* High visibility swap: Deep text over a shiny wallpaper accent */
+  color: @primary;
+  background-color: @background ;
+  font-weight: bold;
+}
+
+#workspaces button:hover {
+  color: @on_primary_container;
+  background-color: @primary_container;
 }
 
 #tray {
   padding-left: 4px;
 }
 
-/* CENTER MODULE */
+/* --- CENTER MODULE (Active Window) --- */
 
 #window {
-  color: #fff;
+  color:  @primary; 
 }
 
-/* RIGHT MODULES */
+/* --- RIGHT MODULES (All System Icons & Statuses) --- */
 
-#memory {
-  color: #d946ef;
-  margin-right: 4px;
-  margin-left: 6px;
-}
-
-#cpu {
-  color: #0ea5e9;
-  margin-right: 4px;
-}
-
-#pulseaudio {
-  color: #14b8a6;
-  margin-right: 4px;
-}
-
-#battery {
-  color: #facc15;
-  margin-right: 4px;
+#memory,
+#cpu,
+#pulseaudio,
+#battery,
+#custom-nightmode,
+#custom-bluetooth,
+#network,
+#custom-powermenu,
+#custom-tuned,
+#custom-tuned.powersave,
+#custom-tuned.balanced,
+#custom-tuned.performance,
+#custom-network_speed {
+  color:  @primary; 
 }
 
 #battery.charging,
 #battery.plugged {
-  color: #84cc16;
+  color: @primary; 
 }
 
-#custom-nightmode {
-  color: #f97316;
-  margin-right: 8px;
+
+/* --- Waybar Modules Spacing & Breathing Room --- */
+
+#memory {
+  margin-left: 6px;
+  margin-right: 5px; 
 }
 
-#custom-bluetooth {
-  color: #3b82f6;
-  margin-right: 8px;
+#cpu {
+  margin-right: 5px; /* Increased gap right after CPU to break up the clutter */
 }
 
-#network {
-  color: #3b82f6;
-  margin-right: 8px;
+#pulseaudio {
+  margin-right: 3px; /* Added breathing room for audio */
 }
 
-#custom-powermenu {
-  color: #f43f5e;
-}
-
-#custom-tuned {
-    padding-left: 4px;
-    padding-right: 5px;
-    margin-right: 5px;
-    margin-left: 4px;
-}
-
-#custom-tuned.powersave {
-    color: #a6e3a1;
-}
-
-#custom-tuned.balanced {
-    color: #f9e2af;
-}
-
-#custom-tuned.performance {
-    color: #f38ba8;
+#battery {
+  margin-right: 12px; /* Added breathing room for battery */
 }
 
 #custom-network_speed {
-    color: #89b4fa;
-    padding-left: 4px;
-    padding-right: 3px;    
-    margin-left: 3px;
-    margin-right: 3px;    
-    letter-spacing: 0.5px; 
+  padding-left: 5px;
+  padding-right: 2px;    
+  margin-left: 5px;
+  margin-right: 4px;    
+  letter-spacing: 0.5px; 
 }
 
-
-/* --- Waybar Modules Spacing --- */
-
-window#waybar #custom-network_speed {
-  margin-left: 6px;
-  margin-right: 10px; /* Generous gap after the speed indicators */
+#network {
+  margin-right: 9px; /* Separation for network connection indicators */
 }
 
-window#waybar #custom-tuned {
-  margin-right: 12px; /* Space between tuned profile and RAM */
+#custom-bluetooth {
+  margin-right: 7px;
 }
 
-window#waybar #memory {
-  margin-right: 1px; /* Space between RAM and CPU */
+#custom-nightmode {
+  margin-right: 7px;
 }
 
-window#waybar #cpu {
-  margin-right: 1px; /* Space between CPU and Audio */
-  margin-left : 0px;
+#custom-tuned {
+  padding-left: 4px;
+  padding-right: 5px;
+  margin-right: 9px; 
+  margin-left: 2px;
+}
+
+#custom-powermenu {
+  margin-right: 6px; /* Clean anchor padding at the very edge of the bar */
+}
+
+/* --- Tooltips / Popups styling --- */
+tooltip {
+  background: @background; /* A deep, rich surface tone for the container */
+  border: 1px solid @primary;     /* A clean, sharp border separating it from windows */
+  border-radius: 6px;
+}
+
+tooltip label {
+  color: @primary;          /* Crisp, high-contrast text pulled from your wallpaper */
+  padding: 6px 10px;
 }

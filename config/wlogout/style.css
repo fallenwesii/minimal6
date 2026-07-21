@@ -1,40 +1,42 @@
-/*@import "theme.css";*/
+@import "colors.css";
+
 window {
   font-family: JetBrainsMono Nerd Font;
   font-size: 14pt;
-  color: #ffffff;
-  background-color: rgba(0, 0, 0, 0.75);
+  color: @outline;
+  /* Mixes your wallpaper background color with 90% opacity */
+  background-color: alpha(@background, 0.90); 
 }
 
 button {
   background-repeat: no-repeat;
   background-position: center;
   background-size: 100px;
-  border: 2px solid #171717;
+  border: 2px solid @background ;
   border-radius: 0px;
-  background-color: #0a0a0a;
+  background-color: @background ;
   margin: 2.5px;
-  color: #ffffff;
+  color: @on_background; 
 }
 
 button:hover {
-  border: 2px solid #171717;
+  border: 2px solid @background;
   border-radius: 0px;
-  background-color: #0a0a0a;
-  color: #ffffff;
+  background-color: @primary;
+  color: @on_background;
 }
 
 button:active {
   border-radius: 0px;
-  border: 2px solid #171717;
-  background-color: #0a0a0a;
-  color: #ffffff;
+  border: 2px solid @primary;
+  background-color: @on_background;
+  color: @on_background;
 }
 
 button:focus {
   border-radius: 0px;
-  border: 2px solid #171717;
-  background-color: #0a0a0a;
+  border: 2px solid @primary;
+  background-color: @background;
   color: #ffffff;
 }
 

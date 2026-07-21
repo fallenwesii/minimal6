@@ -1,11 +1,11 @@
-window {
-  /* background-color: #171717; */
-  background: #0a0a0a;
-}
+@import "/home/wesii/.config/wofi/colors.css";
 
+window {
+    background: alpha(@background, 0.89);
+}
 * {
   font-family: "Jetbrains Mono";
-  color: #fff;
+  color: @primary;
 }
 
 #scroll {
@@ -13,8 +13,8 @@ window {
 }
 
 #input {
-  /* background-color: #262626; */
-  background-color: #171717;
+  /* Slightly lighter container color for the input field */
+  background-color: @background;
   outline: none;
   box-shadow: none;
   border: 0;
@@ -39,7 +39,11 @@ window {
   border-radius: 0.5rem;
 }
 
-#entry:selected {
-  background-color: #262626;
+#entry:selected, #selected {
+  background-color: @primary_container;
   outline: none;
+}
+
+#entry:selected #text, #selected #text {
+  color: @on_primary_container;
 }
