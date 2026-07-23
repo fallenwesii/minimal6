@@ -1,0 +1,12 @@
+# Vendored themes - don't count in language stats
+adw-gtk3/** linguist-vendored
+adw-gtk3-dark/** linguist-vendored
+kvantum/** linguist-vendored
+themes/** linguist-vendored
+
+# Generated files - don't count
+.cache/** linguist-generated
+.matugen/** linguist-generated
+*.css linguist-generated
+*.scss linguist-generated
+
