@@ -1,0 +1,926 @@
+#!/usr/bin/env python3
+import os, sys, re, subprocess, tty, termios, select
+
+HOME = os.path.expanduser("~")
+HYPR_DIR = os.path.join(HOME, ".config", "hypr")
+CONF_DIR = os.path.join(HYPR_DIR, "conf")
+COLORS_FILE = os.path.join(HYPR_DIR, "colors.conf")
+APPEARANCE_CONF = os.path.join(CONF_DIR, "appearance.conf")
+STARTUP_CONF = os.path.join(CONF_DIR, "startup.conf")
+MONITORS_CONF = os.path.join(CONF_DIR, "monitors.conf")
+PROGRAMS_CONF = os.path.join(CONF_DIR, "programs.conf")
+WALLPAPERS_DIR = os.path.join(HOME, "Pictures", "wallpapers")
+MINIMAL6_DIR = os.path.join(HOME, "minimal6")
+
+RST = "\033[0m"
+BOLD = "\033[1m"
+CLR = "\033[2J\033[H"
+
+
+def get_primary_color():
+    if not os.path.exists(COLORS_FILE):
+        return "ffb4ac"
+    with open(COLORS_FILE) as f:
+        for line in f:
+            m = re.search(r'\$primary\s*=\s*rgba?\(([0-9a-fA-F]{6,8})', line)
+            if m:
+                return m.group(1)[:6].lower()
+    return "ffb4ac"
+
+
+def hex_to_rgb(h):
+    h = h.lstrip('#')
+    return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+
+def rgb_to_hex(r, g, b):
+    return f"{r:02x}{g:02x}{b:02x}"
+
+
+def dim_color(h, f=0.4):
+    r, g, b = hex_to_rgb(h)
+    return rgb_to_hex(int(r * f), int(g * f), int(b * f))
+
+
+def c_fg(h):
+    r, g, b = hex_to_rgb(h)
+    return f"\033[38;2;{r};{g};{b}m"
+
+
+def readf(path):
+    if not os.path.exists(path):
+        return ""
+    with open(path) as f:
+        return f.read()
+
+
+def writef(path, content):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as f:
+        f.write(content)
+
+
+def notify(msg):
+    subprocess.run(["dunstify", msg],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def run(cmd):
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def run_out(cmd):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True).stdout.strip()
+    except Exception:
+        return ""
+
+
+def get_default_terminal():
+    content = readf(PROGRAMS_CONF)
+    m = re.search(r'^\$terminal\s*=\s*(.+)', content, re.M)
+    if m:
+        t = m.group(1).strip()
+        t_bin = t.split()[0]
+        return t_bin
+    return "ghostty"
+
+
+def clear():
+    print(CLR, end="")
+
+
+# ── Terminal Key Handling ──
+
+def get_key():
+    if not sys.stdin.isatty():
+        ch = sys.stdin.read(1)
+        if not ch or ch == '\x1b' or ch == 'q': return 'ESC'
+        if ch in ('\n', '\r'): return 'ENTER'
+        return ch
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)
+        b = os.read(fd, 1)
+        if not b:
+            return 'ESC'
+        if b == b'\x1b':
+            r, _, _ = select.select([fd], [], [], 0.05)
+            if r:
+                b2 = os.read(fd, 1)
+                if b2 in (b'[', b'O'):
+                    r2, _, _ = select.select([fd], [], [], 0.05)
+                    if r2:
+                        b3 = os.read(fd, 1)
+                        if b3 == b'A': return 'UP'
+                        if b3 == b'B': return 'DOWN'
+                        if b3 == b'C': return 'RIGHT'
+                        if b3 == b'D': return 'LEFT'
+            return 'ESC'
+        if b in (b'\r', b'\n'): return 'ENTER'
+        if b == b'\x03': raise KeyboardInterrupt
+        if b in (b'\x7f', b'\x08'): return 'BACK'
+        return b.decode('utf-8', errors='ignore')
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+
+def read_line(prompt=""):
+    if sys.stdin.isatty():
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    try:
+        return input(prompt).strip()
+    finally:
+        pass
+
+
+# ── Banner ──
+
+def banner(primary):
+    try:
+        import pyfiglet
+        fig = pyfiglet.figlet_format("minimal6", font="slant")
+    except ImportError:
+        fig = "\n  minimal6\n"
+    for line in fig.splitlines():
+        if line.strip():
+            print(f"{c_fg(primary)}{line}{RST}")
+        else:
+            print()
+
+
+# ── Appearance helpers ──
+
+APPEARANCE_KEYS = {
+    "rounding":     ("decoration:rounding",    r'(rounding\s*=\s*)\d+'),
+    "gaps_in":      ("general:gaps_in",        r'(gaps_in\s*=\s*)\d+'),
+    "gaps_out":     ("general:gaps_out",       r'(gaps_out\s*=\s*)\d+'),
+    "border_size":  ("general:border_size",    r'(border_size\s*=\s*)\d+'),
+}
+
+
+def update_appearance(cfg_key, value):
+    if cfg_key not in APPEARANCE_KEYS:
+        return False
+    hkey, pattern = APPEARANCE_KEYS[cfg_key]
+    content = readf(APPEARANCE_CONF)
+    if re.search(pattern, content):
+        content = re.sub(pattern, rf'\g<1>{value}', content)
+    else:
+        content += f"\n{cfg_key} = {value}\n"
+    writef(APPEARANCE_CONF, content)
+    run(["hyprctl", "keyword", hkey, str(value)])
+    return True
+
+
+def update_startup_wallpaper(path):
+    content = readf(STARTUP_CONF)
+    if re.search(r'exec-once\s*=\s*awww\s+img', content):
+        new = re.sub(
+            r'exec-once\s*=\s*awww\s+img\s+.*',
+            f'exec-once = awww img "{path}" --transition-type none',
+            content,
+        )
+    else:
+        new = content.rstrip() + f'\nexec-once = awww img "{path}" --transition-type none\n'
+    writef(STARTUP_CONF, new)
+
+
+def hyprctl_bool(opt):
+    out = run_out(["hyprctl", "getoption", opt])
+    m = re.search(r'(?:int|bool):\s*(\d)', out)
+    return m is not None and m.group(1) == "1"
+
+
+def pgrep_running(name):
+    return run_out(["pgrep", "-x", name]) != ""
+
+
+# ── Menu Renderer ──
+
+def show_menu(title, items, primary, back=True, default_sel=0):
+    sel = default_sel
+    dim_p = dim_color(primary, 0.4)
+    while True:
+        clear()
+        banner(primary)
+        print(f"\n{c_fg(primary)}{BOLD}{title}{RST}")
+        print(f"{c_fg(dim_p)}{'─' * 40}{RST}")
+        for i, item in enumerate(items):
+            if i == sel:
+                print(f"{c_fg(primary)}{BOLD}  → {item}{RST}")
+            else:
+                print(f"{c_fg(dim_p)}    {item}{RST}")
+        print()
+        if back:
+            print(f"  {c_fg(dim_p)}ESC: Back  ENTER: Select  1-{len(items)}: Select  ↑↓: Navigate{RST}")
+        else:
+            print(f"  {c_fg(dim_p)}ESC: Quit  ENTER: Select  1-{len(items)}: Select  ↑↓: Navigate{RST}")
+
+        key = get_key()
+        if key == 'UP':
+            sel = (sel - 1) % len(items)
+        elif key == 'DOWN':
+            sel = (sel + 1) % len(items)
+        elif key == 'ENTER':
+            return str(sel + 1)
+        elif key == 'ESC':
+            return '0'
+        elif key.isdigit() and 1 <= int(key) <= len(items):
+            return key
+
+
+# ── Wallpaper ──
+
+def wallpaper_ui(primary):
+    if not os.path.exists(WALLPAPERS_DIR):
+        notify("Wallpapers directory not found")
+        return primary
+    wps = sorted(f for f in os.listdir(WALLPAPERS_DIR)
+                 if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")))
+    if not wps:
+        notify("No wallpapers found in ~/Pictures/wallpapers")
+        return primary
+
+    sel = 0
+    view_size = 10
+
+    while True:
+        dim_p = dim_color(primary, 0.4)
+        clear()
+        banner(primary)
+        print(f"\n{c_fg(primary)}{BOLD}Wallpapers (Total: {len(wps)}){RST}\n")
+
+        if len(wps) <= view_size:
+            view_start = 0
+        else:
+            view_start = max(0, min(sel - view_size // 2, len(wps) - view_size))
+        view_end = min(len(wps), view_start + view_size)
+
+        for i in range(view_start, view_end):
+            wp = wps[i]
+            idx_str = f"{i+1}."
+            if i == sel:
+                print(f"{c_fg(primary)}{BOLD}  → {idx_str:>3} {wp[:44]}{RST}")
+            else:
+                print(f"{c_fg(dim_p)}    {idx_str:>3} {wp[:44]}{RST}")
+
+        print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Select  ↑↓: Navigate{RST}")
+        key = get_key()
+        if key == 'UP':
+            sel = (sel - 1) % len(wps)
+        elif key == 'DOWN':
+            sel = (sel + 1) % len(wps)
+        elif key == 'ENTER':
+            full_path = os.path.abspath(os.path.join(WALLPAPERS_DIR, wps[sel]))
+            notify("Generating colors with Matugen...")
+            run(["matugen", "-m", "dark", "image", full_path, "--source-color-index", "0"])
+            update_startup_wallpaper(full_path)
+            run(["awww", "img", full_path, "--transition-type", "none"])
+            run(["hyprctl", "reload"])
+            primary = get_primary_color()
+            notify(f"Wallpaper updated: {wps[sel]}")
+            return primary
+        elif key == 'ESC':
+            return primary
+
+
+# ── Value Picker ──
+
+def simple_picker(primary, title, cfg_key, lo, hi):
+    vals = list(range(lo, hi + 1))
+    sel = 0
+    dim_p = dim_color(primary, 0.4)
+    while True:
+        clear()
+        banner(primary)
+        print(f"\n{c_fg(primary)}{BOLD}{title}{RST}\n")
+        for i, v in enumerate(vals):
+            if i == sel:
+                print(f"{c_fg(primary)}{BOLD}  → {v}{RST}")
+            else:
+                print(f"{c_fg(dim_p)}    {v}{RST}")
+        print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Select  ↑↓: Navigate{RST}")
+        key = get_key()
+        if key == 'UP':
+            sel = (sel - 1) % len(vals)
+        elif key == 'DOWN':
+            sel = (sel + 1) % len(vals)
+        elif key == 'ENTER':
+            update_appearance(cfg_key, str(vals[sel]))
+            notify(f"{title} set to {vals[sel]}")
+            return
+        elif key == 'ESC':
+            return
+        elif key.isdigit() and lo <= int(key) <= hi:
+            update_appearance(cfg_key, key)
+            notify(f"{title} set to {key}")
+            return
+
+
+# ── Toggle UI ──
+
+def toggle_ui(primary, name, get_status, set_on, set_off):
+    first = True
+    dim_p = dim_color(primary, 0.4)
+    while True:
+        st = get_status()
+        if first:
+            sel = 0 if not st else 1
+            first = False
+        items = ["1.Toggle On", "2.Toggle Off"]
+        clear()
+        banner(primary)
+        print(f"\n{c_fg(primary)}{BOLD}{name}{RST}")
+        status_str = "on" if st else "off"
+        print(f"{c_fg(dim_p)}status: {status_str}{RST}\n")
+        for i, item in enumerate(items):
+            if i == sel:
+                print(f"{c_fg(primary)}{BOLD}  → {item}{RST}")
+            else:
+                print(f"{c_fg(dim_p)}    {item}{RST}")
+        print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Select  1-2: Select  ↑↓: Navigate{RST}")
+        key = get_key()
+        if key == 'UP':
+            sel = (sel - 1) % 2
+        elif key == 'DOWN':
+            sel = (sel + 1) % 2
+        elif key == 'ENTER':
+            if sel == 0:
+                set_on()
+                notify(f"{name} turned ON")
+                first = True
+            elif sel == 1:
+                set_off()
+                notify(f"{name} turned OFF")
+                first = True
+        elif key == '1':
+            set_on()
+            notify(f"{name} turned ON")
+            first = True
+        elif key == '2':
+            set_off()
+            notify(f"{name} turned OFF")
+            first = True
+        elif key == 'ESC':
+            return
+
+
+# ── Toggle implementations ──
+
+def toggle_animations(primary):
+    def status(): return hyprctl_bool("animations:enabled")
+    def on():
+        run(["hyprctl", "keyword", "animations:enabled", "true"])
+        content = readf(APPEARANCE_CONF)
+        if re.search(r'animations\s*\{', content):
+            content = re.sub(
+                r'(animations\s*\{[^}]*?enabled\s*=\s*)\w+',
+                r'\g<1>true', content, flags=re.DOTALL)
+        else:
+            content += "\nanimations {\n  enabled = true\n}\n"
+        writef(APPEARANCE_CONF, content)
+    def off():
+        run(["hyprctl", "keyword", "animations:enabled", "false"])
+        content = readf(APPEARANCE_CONF)
+        if re.search(r'animations\s*\{', content):
+            content = re.sub(
+                r'(animations\s*\{[^}]*?enabled\s*=\s*)\w+',
+                r'\g<1>false', content, flags=re.DOTALL)
+        else:
+            content += "\nanimations {\n  enabled = false\n}\n"
+        writef(APPEARANCE_CONF, content)
+    toggle_ui(primary, "Animations", status, on, off)
+
+
+def toggle_blur(primary):
+    def status(): return hyprctl_bool("decoration:blur:enabled")
+    def on():
+        run(["hyprctl", "keyword", "decoration:blur:enabled", "true"])
+        content = readf(APPEARANCE_CONF)
+        content = re.sub(
+            r'(blur\s*\{[^}]*?enabled\s*=\s*)\w+',
+            r'\g<1>true', content, flags=re.DOTALL)
+        writef(APPEARANCE_CONF, content)
+    def off():
+        run(["hyprctl", "keyword", "decoration:blur:enabled", "false"])
+        content = readf(APPEARANCE_CONF)
+        content = re.sub(
+            r'(blur\s*\{[^}]*?enabled\s*=\s*)\w+',
+            r'\g<1>false', content, flags=re.DOTALL)
+        writef(APPEARANCE_CONF, content)
+    toggle_ui(primary, "Blur", status, on, off)
+
+
+def toggle_dnd(primary):
+    def status(): return run_out(["dunstctl", "is-paused"]) == "true"
+    def on():
+        run(["dunstctl", "set-paused", "true"])
+    def off():
+        run(["dunstctl", "set-paused", "false"])
+    toggle_ui(primary, "DND", status, on, off)
+
+
+def toggle_caffeine(primary):
+    def status(): return pgrep_running("hypridle")
+    def on():
+        run(["hyprctl", "dispatch", "exec", f"hypridle -c {os.path.join(HYPR_DIR, 'hypridle.conf')}"])
+    def off():
+        run(["pkill", "-9", "-x", "hypridle"])
+        run(["killall", "-9", "hypridle"])
+    toggle_ui(primary, "Caffeine", status, on, off)
+
+
+def toggle_gamemode(primary):
+    def status(): return not hyprctl_bool("animations:enabled")
+    def on():
+        run(["hyprctl", "keyword", "animations:enabled", "false"])
+        run(["hyprctl", "keyword", "decoration:blur:enabled", "false"])
+        run(["hyprctl", "keyword", "decoration:shadow:enabled", "false"])
+    def off():
+        run(["hyprctl", "reload"])
+    toggle_ui(primary, "Gamemode", status, on, off)
+
+
+# ── Configuration ──
+
+def open_config():
+    term = get_default_terminal()
+    cmd = f"sh -c 'cd {HYPR_DIR} && {term} -e nvim hyprland.conf'"
+    run(["hyprctl", "dispatch", "exec", cmd])
+    clear()
+    sys.exit(0)
+
+
+# ── Connectivity ──
+
+def wifi_menu(primary):
+    dim_p = dim_color(primary, 0.4)
+    items = ["1.Toggle ON", "2.Toggle Off", "3.connect to a network"]
+    sel = 0
+    while True:
+        st = run_out(["nmcli", "radio", "wifi"])
+        is_on = (st == "enabled")
+        clear()
+        banner(primary)
+        print(f"\n{c_fg(primary)}{BOLD}Wifi{RST}")
+        status_str = "On" if is_on else "Off"
+        print(f"{c_fg(dim_p)}status: {status_str}{RST}\n")
+        for i, item in enumerate(items):
+            if i == sel:
+                print(f"{c_fg(primary)}{BOLD}  → {item}{RST}")
+            else:
+                print(f"{c_fg(dim_p)}    {item}{RST}")
+        print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Select  1-3: Select  ↑↓: Navigate{RST}")
+        key = get_key()
+        if key == 'UP':
+            sel = (sel - 1) % len(items)
+        elif key == 'DOWN':
+            sel = (sel + 1) % len(items)
+        elif key == 'ENTER':
+            if sel == 0:
+                run(["nmcli", "radio", "wifi", "on"])
+                notify("Wifi turned ON")
+            elif sel == 1:
+                run(["nmcli", "radio", "wifi", "off"])
+                notify("Wifi turned OFF")
+            elif sel == 2:
+                wifi_connect(primary)
+        elif key == '1':
+            run(["nmcli", "radio", "wifi", "on"])
+            notify("Wifi turned ON")
+        elif key == '2':
+            run(["nmcli", "radio", "wifi", "off"])
+            notify("Wifi turned OFF")
+        elif key == '3':
+            wifi_connect(primary)
+        elif key == 'ESC':
+            return
+
+
+def wifi_connect(primary):
+    notify("Scanning for WiFi networks...")
+    run(["nmcli", "device", "wifi", "rescan"])
+    out = run_out(["nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list"])
+    nets = []
+    seen = set()
+    for line in out.splitlines():
+        parts = line.split(":")
+        if len(parts) >= 1 and parts[0] and parts[0] not in seen:
+            seen.add(parts[0])
+            nets.append((parts[0], parts[1] if len(parts) > 1 else "?", parts[2] if len(parts) > 2 else ""))
+    if not nets:
+        notify("No WiFi networks found")
+        return
+    sel = 0
+    dim_p = dim_color(primary, 0.4)
+    while True:
+        clear()
+        banner(primary)
+        print(f"\n{c_fg(primary)}{BOLD}Available Networks{RST}\n")
+        for i, (ssid, sig, sec) in enumerate(nets):
+            label = f"{ssid[:28]:28} {sig:>3}%  {sec}"
+            if i == sel:
+                print(f"{c_fg(primary)}{BOLD}  → {i+1}. {label}{RST}")
+            else:
+                print(f"{c_fg(dim_p)}    {i+1}. {label}{RST}")
+        print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Connect  ↑↓: Navigate{RST}")
+        key = get_key()
+        if key == 'UP':
+            sel = (sel - 1) % len(nets)
+        elif key == 'DOWN':
+            sel = (sel + 1) % len(nets)
+        elif key == 'ENTER':
+            ssid, sig, sec = nets[sel]
+            if sec and sec != "--":
+                pw = read_line(f"{c_fg(primary)}Password for {ssid}: {RST}")
+                run(["nmcli", "device", "wifi", "connect", ssid, "password", pw])
+            else:
+                run(["nmcli", "device", "wifi", "connect", ssid])
+            notify(f"Connecting to {ssid}...")
+            return
+        elif key == 'ESC':
+            return
+
+
+def bluetooth_menu(primary):
+    dim_p = dim_color(primary, 0.4)
+    items = ["1.Toggle ON", "2.Toggle Off", "3.Connect a device"]
+    sel = 0
+    while True:
+        out = run_out(["bluetoothctl", "show"])
+        is_on = ("Powered: yes" in out)
+        clear()
+        banner(primary)
+        print(f"\n{c_fg(primary)}{BOLD}Bluetooth{RST}")
+        status_str = "On" if is_on else "Off"
+        print(f"{c_fg(dim_p)}Status: {status_str}{RST}\n")
+        for i, item in enumerate(items):
+            if i == sel:
+                print(f"{c_fg(primary)}{BOLD}  → {item}{RST}")
+            else:
+                print(f"{c_fg(dim_p)}    {item}{RST}")
+        print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Select  1-3: Select  ↑↓: Navigate{RST}")
+        key = get_key()
+        if key == 'UP':
+            sel = (sel - 1) % len(items)
+        elif key == 'DOWN':
+            sel = (sel + 1) % len(items)
+        elif key == 'ENTER':
+            if sel == 0:
+                run(["bluetoothctl", "power", "on"])
+                notify("Bluetooth turned ON")
+            elif sel == 1:
+                run(["bluetoothctl", "power", "off"])
+                notify("Bluetooth turned OFF")
+            elif sel == 2:
+                bt_connect(primary)
+        elif key == '1':
+            run(["bluetoothctl", "power", "on"])
+            notify("Bluetooth turned ON")
+        elif key == '2':
+            run(["bluetoothctl", "power", "off"])
+            notify("Bluetooth turned OFF")
+        elif key == '3':
+            bt_connect(primary)
+        elif key == 'ESC':
+            return
+
+
+def bt_connect(primary):
+    notify("Scanning for Bluetooth devices...")
+    run(["bluetoothctl", "--timeout", "5", "scan", "on"])
+    out = run_out(["bluetoothctl", "devices"])
+    devs = []
+    for line in out.splitlines():
+        m = re.match(r'Device\s+([0-9A-F:]+)\s+(.+)', line, re.I)
+        if m:
+            devs.append((m.group(1), m.group(2)))
+    if not devs:
+        notify("No Bluetooth devices found")
+        return
+    sel = 0
+    dim_p = dim_color(primary, 0.4)
+    while True:
+        clear()
+        banner(primary)
+        print(f"\n{c_fg(primary)}{BOLD}Devices{RST}\n")
+        for i, (mac, name) in enumerate(devs):
+            label = f"{name} ({mac})"
+            if i == sel:
+                print(f"{c_fg(primary)}{BOLD}  → {i+1}. {label}{RST}")
+            else:
+                print(f"{c_fg(dim_p)}    {i+1}. {label}{RST}")
+        print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Connect  ↑↓: Navigate{RST}")
+        key = get_key()
+        if key == 'UP':
+            sel = (sel - 1) % len(devs)
+        elif key == 'DOWN':
+            sel = (sel + 1) % len(devs)
+        elif key == 'ENTER':
+            mac, name = devs[sel]
+            notify(f"Pairing & connecting to {name}...")
+            run(["bluetoothctl", "pair", mac])
+            run(["bluetoothctl", "trust", mac])
+            run(["bluetoothctl", "connect", mac])
+            notify(f"Connected to {name}")
+            return
+        elif key == 'ESC':
+            return
+
+
+# ── Default Apps ──
+
+APPS_FIELDS = [
+    ("$terminal",    "Terminal"),
+    ("$fileManager", "File Manager"),
+    ("$menu",        "App Launcher"),
+]
+
+
+def default_apps(primary):
+    sel = 0
+    dim_p = dim_color(primary, 0.4)
+    while True:
+        content = readf(PROGRAMS_CONF)
+        clear()
+        banner(primary)
+        print(f"\n{c_fg(primary)}{BOLD}Default Apps{RST}\n")
+        current = {}
+        for var, label in APPS_FIELDS:
+            m = re.search(rf'^{re.escape(var)}\s*=\s*(.+)', content, re.M)
+            val = m.group(1).strip() if m else ""
+            current[var] = val
+        for i, (var, label) in enumerate(APPS_FIELDS):
+            item_str = f"{i+1}. {label}: {current[var]}"
+            if i == sel:
+                print(f"{c_fg(primary)}{BOLD}  → {item_str}{RST}")
+            else:
+                print(f"{c_fg(dim_p)}    {item_str}{RST}")
+        print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Edit  1-3: Select  ↑↓: Navigate{RST}")
+        key = get_key()
+        if key == 'UP':
+            sel = (sel - 1) % len(APPS_FIELDS)
+        elif key == 'DOWN':
+            sel = (sel + 1) % len(APPS_FIELDS)
+        elif key == 'ENTER':
+            var, label = APPS_FIELDS[sel]
+            old = current[var]
+            new = read_line(f"{c_fg(primary)}Enter new {label} [{old}]: {RST}")
+            if new:
+                if re.search(rf'^{re.escape(var)}\s*=', content, re.M):
+                    content = re.sub(
+                        rf'^{re.escape(var)}\s*=\s*.*$',
+                        f"{var} = {new}",
+                        content,
+                        flags=re.M,
+                    )
+                else:
+                    content += f"\n{var} = {new}\n"
+                writef(PROGRAMS_CONF, content)
+                notify(f"{label} updated to {new}")
+        elif key in ('1', '2', '3'):
+            sel = int(key) - 1
+            var, label = APPS_FIELDS[sel]
+            old = current[var]
+            new = read_line(f"{c_fg(primary)}Enter new {label} [{old}]: {RST}")
+            if new:
+                if re.search(rf'^{re.escape(var)}\s*=', content, re.M):
+                    content = re.sub(
+                        rf'^{re.escape(var)}\s*=\s*.*$',
+                        f"{var} = {new}",
+                        content,
+                        flags=re.M,
+                    )
+                else:
+                    content += f"\n{var} = {new}\n"
+                writef(PROGRAMS_CONF, content)
+                notify(f"{label} updated to {new}")
+        elif key == 'ESC':
+            return
+
+
+# ── Monitor ──
+
+def monitor_menu(primary):
+    dim_p = dim_color(primary, 0.4)
+    content = readf(MONITORS_CONF)
+    
+    mon_name = "eDP-1"
+    highest_res_hz = "1366x768@60.00Hz"
+    max_hz = "60.00Hz"
+
+    out = run_out(["hyprctl", "monitors", "-j"])
+    try:
+        import json
+        mons = json.loads(out)
+        if mons and isinstance(mons, list):
+            m0 = mons[0]
+            mon_name = m0.get("name", "eDP-1")
+            modes = m0.get("availableModes", [])
+            if modes:
+                highest_res_hz = modes[0]
+                hz_m = re.search(r'@([\d\.]+)Hz', highest_res_hz, re.I)
+                if hz_m:
+                    max_hz = hz_m.group(1) + "Hz"
+    except Exception:
+        pass
+
+    m_conf = re.search(r'monitor\s*=\s*([^,\s]+),([^,\s]+)', content)
+    current_res = m_conf.group(2) if m_conf else highest_res_hz
+    if m_conf:
+        mon_name = m_conf.group(1)
+
+    opts = [
+        highest_res_hz,
+        f"1920x1080@{max_hz}",
+        f"3840x2160@{max_hz}",
+    ]
+    sel = 0
+
+    while True:
+        clear()
+        banner(primary)
+        print(f"\n{c_fg(primary)}{BOLD}Select Screen Resolution{RST}\n")
+        for i, opt in enumerate(opts):
+            mark = " (current)" if opt == current_res else ""
+            item_str = f"{i+1}. {opt}{mark}"
+            if i == sel:
+                print(f"{c_fg(primary)}{BOLD}  → {item_str}{RST}")
+            else:
+                print(f"{c_fg(dim_p)}    {item_str}{RST}")
+        print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Apply  1-3: Select  ↑↓: Navigate{RST}")
+        key = get_key()
+        if key == 'UP':
+            sel = (sel - 1) % len(opts)
+        elif key == 'DOWN':
+            sel = (sel + 1) % len(opts)
+        elif key == 'ENTER':
+            res = opts[sel]
+            if re.search(r'monitor\s*=', content):
+                content = re.sub(
+                    r'(monitor\s*=\s*[^,\s]+,)[^,\s]+',
+                    rf'\g<1>{res}',
+                    content,
+                )
+            else:
+                content += f"\nmonitor={mon_name},{res},auto,1\n"
+            writef(MONITORS_CONF, content)
+            run(["hyprctl", "keyword", "monitor", f"{mon_name},{res},auto,1"])
+            notify(f"Resolution set to {res}")
+            return
+        elif key in ('1', '2', '3'):
+            sel = int(key) - 1
+            res = opts[sel]
+            if re.search(r'monitor\s*=', content):
+                content = re.sub(
+                    r'(monitor\s*=\s*[^,\s]+,)[^,\s]+',
+                    rf'\g<1>{res}',
+                    content,
+                )
+            else:
+                content += f"\nmonitor={mon_name},{res},auto,1\n"
+            writef(MONITORS_CONF, content)
+            run(["hyprctl", "keyword", "monitor", f"{mon_name},{res},auto,1"])
+            notify(f"Resolution set to {res}")
+            return
+        elif key == 'ESC':
+            return
+
+
+# ── Update ──
+
+def check_update(primary):
+    clear()
+    banner(primary)
+    dim_p = dim_color(primary, 0.4)
+    print(f"\n{c_fg(primary)}{BOLD}Update{RST}")
+    print(f"{c_fg(dim_p)}Note: This is not a system update (updates minimal6 dotfiles only).\n{RST}")
+    
+    if not os.path.exists(os.path.join(MINIMAL6_DIR, ".git")):
+        print(f"{c_fg(primary)}Git repository not found at {MINIMAL6_DIR}{RST}")
+        read_line(f"\n{c_fg(dim_p)}Press Enter to return…{RST}")
+        return
+
+    notify("Checking for dotfiles updates...")
+    run_out(["git", "-C", MINIMAL6_DIR, "fetch", "origin"])
+    
+    branch = run_out(["git", "-C", MINIMAL6_DIR, "rev-parse", "--abbrev-ref", "HEAD"]) or "dev"
+    ahead = run_out(["git", "-C", MINIMAL6_DIR, "rev-list", "--count", f"HEAD..origin/{branch}"])
+    
+    if ahead and ahead.isdigit() and int(ahead) > 0:
+        log = run_out(["git", "-C", MINIMAL6_DIR, "log", f"HEAD..origin/{branch}", "--oneline"])
+        print(f"{c_fg(primary)}{ahead} update(s) available from origin/{branch}:\n{RST}")
+        for line in log.splitlines():
+            print(f"{c_fg(dim_p)}  - {line}{RST}")
+        print()
+        ans = read_line(f"{c_fg(primary)}Pull updates and update symlinks? (y/N): {RST}").lower()
+        if ans == 'y':
+            run_out(["git", "-C", MINIMAL6_DIR, "pull", "origin", branch])
+            setup_script = os.path.join(MINIMAL6_DIR, "setup.sh")
+            if os.path.exists(setup_script):
+                run(["bash", setup_script])
+            notify("minimal6 dotfiles updated & symlinks refreshed!")
+            print(f"\n{c_fg(primary)}Successfully updated!{RST}")
+        else:
+            notify("Update skipped")
+    else:
+        print(f"{c_fg(primary)}minimal6 dotfiles are already up to date.{RST}")
+        notify("minimal6 is up to date")
+    
+    read_line(f"\n{c_fg(dim_p)}Press Enter to return…{RST}")
+
+
+# ── Sub-menus ──
+
+def appearance_menu(primary):
+    items = [
+        "1.Wallpaper",
+        "2.Rounding",
+        "3.Gaps in",
+        "4.Gaps out",
+        "5.Border size",
+    ]
+    while True:
+        ch = show_menu("Appearance", items, primary)
+        if ch == "0": break
+        if ch == "1": primary = wallpaper_ui(primary)
+        elif ch == "2": simple_picker(primary, "Rounding", "rounding", 0, 9)
+        elif ch == "3": simple_picker(primary, "Gaps in", "gaps_in", 1, 9)
+        elif ch == "4": simple_picker(primary, "Gaps out", "gaps_out", 1, 9)
+        elif ch == "5": simple_picker(primary, "Border size", "border_size", 0, 6)
+
+
+def toggles_menu(primary):
+    handlers = {
+        "1": toggle_animations,
+        "2": toggle_blur,
+        "3": toggle_dnd,
+        "4": toggle_caffeine,
+        "5": toggle_gamemode,
+    }
+    items = [
+        "1.Animations",
+        "2.Blur",
+        "3.DND",
+        "4.Caffeine",
+        "5.Gamemode",
+    ]
+    while True:
+        ch = show_menu("Toggles", items, primary)
+        if ch == "0": break
+        if ch in handlers: handlers[ch](primary)
+
+
+def connectivity_menu(primary):
+    items = [
+        "1.Wifi",
+        "2.Bluetooth",
+    ]
+    while True:
+        ch = show_menu("Connectivity", items, primary)
+        if ch == "0": break
+        if ch == "1": wifi_menu(primary)
+        elif ch == "2": bluetooth_menu(primary)
+
+
+# ── Main ──
+
+def main():
+    try:
+        primary = get_primary_color()
+        handlers = {
+            "1": appearance_menu,
+            "2": toggles_menu,
+            "3": lambda p: open_config(),
+            "4": connectivity_menu,
+            "5": default_apps,
+            "6": monitor_menu,
+            "7": check_update,
+        }
+        while True:
+            ch = show_menu("Main Menu", [
+                "1.Appearance",
+                "2.Toggles",
+                "3.Configuration",
+                "4.Connectivity",
+                "5.Default apps",
+                "6.Monitor",
+                "7.Update",
+            ], primary, back=False, default_sel=0)
+            if ch == "0":
+                clear()
+                return
+            if ch in handlers:
+                primary = get_primary_color()
+                handlers[ch](primary)
+    except KeyboardInterrupt:
+        clear()
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

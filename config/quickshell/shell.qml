@@ -116,7 +116,7 @@ ShellRoot {
             reload();
             const max = shell.numberFromFile(maxBrightness);
             if (max > 0)
-                shell.showOsd("display-brightness-symbolic", "Brightness", shell.numberFromFile(brightness) / max, false);
+                shell.showOsd("brightness-high-symbolic", "Brightness", shell.numberFromFile(brightness) / max, false);
         }
     }
 
