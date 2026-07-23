@@ -9,17 +9,17 @@ set = true
 #  WINDOW MANAGER & COMPOSITORS
 # ----------------------------------------------------
 [templates.hyprland]
-input_path = '/home/wesii/.config/matugen/templates/hyprland.conf'
-output_path = '/home/wesii/.config/hypr/colors.conf'
+input_path = '~/.config/matugen/templates/hyprland.conf'
+output_path = '~/.config/hypr/colors.conf'
 
 [templates.waybar]
-input_path = '/home/wesii/.config/matugen/templates/waybar.css'
-output_path = '/home/wesii/.config/waybar/colors.css'
+input_path = '~/.config/matugen/templates/waybar.css'
+output_path = '~/.config/waybar/colors.css'
 post_hook = 'pkill -SIGUSR2 waybar || true'
 
 [templates.wofi]
-input_path = '/home/wesii/.config/matugen/templates/wofi.css'
-output_path = '/home/wesii/.config/wofi/colors.css'
+input_path = '~/.config/matugen/templates/wofi.css'
+output_path = '~/.config/wofi/colors.css'
 
 # ----------------------------------------------------
 #  THEME ENGINES & GRAPHICS (GTK / QT )
@@ -34,11 +34,11 @@ output_path = "~/.themes/adw-gtk3-dark/gtk-4.0/colors.css"
 post_hook = 'bash ~/.config/matugen/gtk-reload.sh'
 
 [templates.qt5ct]
-input_path = '/home/wesii/.config/matugen/templates/qt.conf'
-output_path = '/home/wesii/.config/qt5ct/colors/matugen.conf'
+input_path = '~/.config/matugen/templates/qt.conf'
+output_path = '~/.config/qt5ct/colors/matugen.conf'
 
 [templates.qt6ct]
-input_path = '/home/wesii/.config/matugen/templates/qt.conf'
+input_path = '~/.config/matugen/templates/qt.conf'
 output_path = '~/.config/qt6ct/colors/matugen.conf'
 
 [templates.kvantum_kvconfig]
@@ -54,50 +54,50 @@ output_path = '~/.config/Kvantum/matugen/matugen.svg'
 #  TERMINALS & SHELLS
 # ----------------------------------------------------
 [templates.ghostty]
-input_path = '/home/wesii/.config/matugen/templates/ghostty'
-output_path = '/home/wesii/.config/ghostty/themes/Matugen'
+input_path = '~/.config/matugen/templates/ghostty'
+output_path = '~/.config/ghostty/themes/Matugen'
 post_hook = 'pkill -SIGUSR2 ghostty || true'
 
 [templates.alacritty]
-input_path = '/home/wesii/.config/matugen/templates/alacritty.toml'
-output_path = '/home/wesii/.config/alacritty/colors.toml'
+input_path = '~/.config/matugen/templates/alacritty.toml'
+output_path = '~/.config/alacritty/colors.toml'
 
 [templates.kitty]
-input_path = '/home/wesii/.config/matugen/templates/kitty.conf'
-output_path = '/home/wesii/.config/kitty/themes/Matugen.conf'
+input_path = '~/.config/matugen/templates/kitty.conf'
+output_path = '~/.config/kitty/themes/Matugen.conf'
 post_hook = 'pkill -SIGUSR1 kitty || true'
 # ----------------------------------------------------
 #  EDITORS & UTILITIES
 # ----------------------------------------------------
 [templates.nvim]
-input_path = '/home/wesii/.config/matugen/templates/nvim.vim'
-output_path = '/home/wesii/.config/nvim/colors/matugen.vim'
+input_path = '~/.config/matugen/templates/nvim.vim'
+output_path = '~/.config/nvim/colors/matugen.vim'
 post_hook = 'pkill -SIGUSR1 nvim || true'
 
 [templates.vscodium]
-input_path = '/home/wesii/.config/matugen/templates/vscodium.json'
-output_path = '/home/wesii/.cache/matugen/vscode-colors.json'
+input_path = '~/.config/matugen/templates/vscodium.json'
+output_path = '~/.cache/matugen/vscode-colors.json'
 
 [templates.dunst]
-input_path = '/home/wesii/.config/matugen/templates/dunstrc'
-output_path = '/home/wesii/.config/dunst/dunstrc'
+input_path = '~/.config/matugen/templates/dunstrc'
+output_path = '~/.config/dunst/dunstrc'
 post_hook = 'dunstctl reload || true'
 
 [templates.wlogout]
-input_path = '/home/wesii/.config/matugen/templates/wlogout.css'
-output_path = '/home/wesii/.config/wlogout/colors.css'
+input_path = '~/.config/matugen/templates/wlogout.css'
+output_path = '~/.config/wlogout/colors.css'
 
 # ----------------------------------------------------
 #  MEDIA & SYSTEM MONITORING
 # ----------------------------------------------------
 [templates.btop]
-input_path = '/home/wesii/.config/matugen/templates/btop.theme'
-output_path = '/home/wesii/.config/btop/themes/matugen.theme'
+input_path = '~/.config/matugen/templates/btop.theme'
+output_path = '~/.config/btop/themes/matugen.theme'
 post_hook = 'pkill -USR2 btop || true'
 
 [templates.cava]
-input_path = '/home/wesii/.config/matugen/templates/cava.ini'
-output_path = '/home/wesii/.config/cava/themes/matugen'
+input_path = '~/.config/matugen/templates/cava.ini'
+output_path = '~/.config/cava/themes/matugen'
 post_hook = 'pkill -USR1 cava || true'
 
 [templates.vscode-raw]

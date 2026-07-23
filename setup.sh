@@ -25,7 +25,7 @@ show_header() {
 
 show_header
 
-# --- Package Lists---
+# --- Package Lists ---
 PACMAN_PKGS=(
   "hyprland" "hypridle" "hyprlock" "hyprsunset" "gammastep"
   "xdg-desktop-portal-hyprland" "waybar" "dunst" "wofi" "nwg-look"
@@ -37,11 +37,13 @@ PACMAN_PKGS=(
   "ttf-jetbrains-mono-nerd" "noto-fonts" "qt5-wayland" "qt5ct" "qt6ct"
   "networkmanager" "base-devel" "xorg-xhost" "quickshell"
   "neovim" "kvantum" "ghostty" "awww"
+  "python3" "python-pyfiglet" "matugen"
 )
 
 AUR_PKGS=(
   "wlogout" "wofi-emoji" "brave-bin" "nm-connection-editor"
-  "python-pywal" "bibata-cursor-theme")
+  "bibata-cursor-theme"
+)
 
 # --- 2. Check for Build Tools and AUR Helper ---
 echo -e "${YELLOW}Checking for build tools...${NC}"
@@ -201,18 +203,138 @@ else
   echo -e "${GREEN}Installed net-speed.sh${NC}"
 fi
 
-# Wallpapers
-mkdir -p "$HOME/Pictures"
-cp -r "$DOTFILES_DIR/wallpapers" "$HOME/Pictures"
-
-# --- 8. Theming consistency for Flatpak ---
-if command -v flatpak &>/dev/null; then
-  echo -e "${YELLOW}Setting up Flatpak theme consistency...${NC}"
-  flatpak override --user --filesystem=$"HOME"/.themes
-  echo -e "${GREEN}Flatpak apps can now access ~/.themes${NC}"
+# minimal6 python script
+if [ -f "$HOME/.local/bin/minimal6" ]; then
+  read -p "Overwrite existing ~/.local/bin/minimal6? (y/n): " choice
+  if [[ "$choice" == "y" || "$choice" == "Y" ]]; then
+    cp "$DOTFILES_DIR/minimal6" "$HOME/.local/bin/"
+    chmod +x "$HOME/.local/bin/minimal6"
+    echo -e "${GREEN}Updated minimal6${NC}"
+  else
+    echo "Skipping minimal6"
+  fi
+else
+  cp "$DOTFILES_DIR/minimal6" "$HOME/.local/bin/"
+  chmod +x "$HOME/.local/bin/minimal6"
+  echo -e "${GREEN}Installed minimal6${NC}"
 fi
 
-# --- 9. Final Verification ---
+# --- 8. Resolve Hardcoded Paths ---
+# Some config files were originally copied from the author's system and contain
+# hardcoded paths (e.g. /home/wesii). This section fixes them for the current user.
+echo -e "${YELLOW}Resolving hardcoded paths for your system...${NC}"
+
+# Helper: in-place sed that works on both GNU and BSD
+sed_inplace() {
+  sed -i "$1" "$2"
+}
+
+# -- gtk-3.0/bookmarks: contains __HOME__ placeholder --
+BOOKMARKS="$CONF_DIR/gtk-3.0/bookmarks"
+if [ -f "$BOOKMARKS" ]; then
+  sed_inplace "s|__HOME__|$HOME|g" "$BOOKMARKS"
+  echo -e "${GREEN}Fixed paths in gtk-3.0/bookmarks${NC}"
+elif [ -L "$BOOKMARKS" ]; then
+  # It's a symlink: operate on the real file in dotfiles dir
+  sed_inplace "s|__HOME__|$HOME|g" "$DOTFILES_DIR/config/gtk-3.0/bookmarks"
+  echo -e "${GREEN}Fixed paths in gtk-3.0/bookmarks (via dotfiles symlink)${NC}"
+fi
+
+# -- quickshell/shell.qml: __HOME__ placeholder for matugenColorsPath --
+SHELL_QML="$CONF_DIR/quickshell/shell.qml"
+if [ -f "$SHELL_QML" ]; then
+  sed_inplace "s|__HOME__|$HOME|g" "$SHELL_QML"
+  echo -e "${GREEN}Fixed paths in quickshell/shell.qml${NC}"
+elif [ -L "$SHELL_QML" ]; then
+  sed_inplace "s|__HOME__|$HOME|g" "$DOTFILES_DIR/config/quickshell/shell.qml"
+  echo -e "${GREEN}Fixed paths in quickshell/shell.qml (via dotfiles symlink)${NC}"
+fi
+
+# -- hypr/colors.conf: $image path (matugen writes this, but seed it correctly) --
+COLORS_CONF="$CONF_DIR/hypr/colors.conf"
+if [ -f "$COLORS_CONF" ] || [ -L "$COLORS_CONF" ]; then
+  # Resolve the real file (follow symlink to dotfiles)
+  REAL_COLORS=$(realpath "$COLORS_CONF" 2>/dev/null || echo "$COLORS_CONF")
+  sed_inplace "s|~/Pictures|$HOME/Pictures|g" "$REAL_COLORS"
+  echo -e "${GREEN}Fixed \$image path in hypr/colors.conf${NC}"
+fi
+
+# -- hypr/conf/startup.conf: awww wallpaper path --
+STARTUP_CONF="$CONF_DIR/hypr/conf/startup.conf"
+if [ -f "$STARTUP_CONF" ] || [ -L "$STARTUP_CONF" ]; then
+  REAL_STARTUP=$(realpath "$STARTUP_CONF" 2>/dev/null || echo "$STARTUP_CONF")
+  # $HOME is already used there (shell expands it), no sed needed
+  # But if it still has a hardcoded path, replace it
+  sed_inplace "s|/home/[a-zA-Z0-9_-]*/Pictures|$HOME/Pictures|g" "$REAL_STARTUP"
+fi
+
+# -- GTK symlinks: recreate the gtk-4.0 and gtk-3.0 symlinks that pointed --
+# -- to /home/wesii/.themes/... so they point to the current user's ~/.themes --
+echo -e "${YELLOW}Recreating GTK theme symlinks...${NC}"
+ADW_GTK4="$HOME/.themes/adw-gtk3-dark/gtk-4.0"
+ADW_GTK3="$HOME/.themes/adw-gtk3-dark/gtk-3.0"
+GTK4_CONF="$CONF_DIR/gtk-4.0"
+GTK3_CONF="$CONF_DIR/gtk-3.0"
+
+# Only proceed if the .themes dir actually landed in $HOME (via symlink or copy)
+if [ -d "$HOME/.themes/adw-gtk3-dark" ]; then
+  # gtk-4.0 files that should be symlinked from ~/.config/gtk-4.0/ into the theme
+  for gtkfile in gtk.css gtk-dark.css libadwaita.css libadwaita-tweaks.css matugen-override.css colors.css assets; do
+    TARGET_LINK="$GTK4_CONF/$gtkfile"
+    THEME_SRC="$ADW_GTK4/$gtkfile"
+    if [ -e "$THEME_SRC" ]; then
+      # Remove old (possibly broken) symlink or file, then recreate
+      rm -f "$TARGET_LINK"
+      ln -sf "$THEME_SRC" "$TARGET_LINK"
+      echo -e "  ${GREEN}Linked gtk-4.0/$gtkfile${NC}"
+    fi
+  done
+  # gtk-3.0/colors.css symlink
+  GTK3_COLORS="$GTK3_CONF/colors.css"
+  THEME_GTK3_COLORS="$ADW_GTK3/colors.css"
+  if [ -e "$THEME_GTK3_COLORS" ]; then
+    rm -f "$GTK3_COLORS"
+    ln -sf "$THEME_GTK3_COLORS" "$GTK3_COLORS"
+    echo -e "  ${GREEN}Linked gtk-3.0/colors.css${NC}"
+  fi
+else
+  echo -e "  ${YELLOW}~/.themes/adw-gtk3-dark not found yet — GTK symlinks will be created after theme setup.${NC}"
+fi
+
+echo -e "${GREEN}Hardcoded path resolution complete.${NC}"
+
+# --- 9. Wallpapers ---
+echo -e "${YELLOW}Setting up wallpapers...${NC}"
+WALLPAPERS_DEST="$HOME/Pictures/wallpapers"
+
+if [ -d "$WALLPAPERS_DEST" ]; then
+  echo -e "${YELLOW}A wallpapers directory already exists at $WALLPAPERS_DEST.${NC}"
+  echo -e "${YELLOW}To avoid overwriting your existing wallpapers, this setup will NOT touch it.${NC}"
+  echo ""
+  read -p "Would you like to back it up first before adding new wallpapers? (y/n): " backup_choice
+  if [[ "$backup_choice" == "y" || "$backup_choice" == "Y" ]]; then
+    BACKUP_PATH="${WALLPAPERS_DEST}.bak_$(date +%Y%m%d_%H%M%S)"
+    cp -r "$WALLPAPERS_DEST" "$BACKUP_PATH"
+    echo -e "${GREEN}Backed up your wallpapers to: $BACKUP_PATH${NC}"
+    echo ""
+    read -p "Now copy new wallpapers from dotfiles into $WALLPAPERS_DEST? (y/n): " copy_choice
+    if [[ "$copy_choice" == "y" || "$copy_choice" == "Y" ]]; then
+      mkdir -p "$WALLPAPERS_DEST"
+      cp "$DOTFILES_DIR/wallpapers/"* "$WALLPAPERS_DEST/" 2>/dev/null
+      echo -e "${GREEN}Copied new wallpapers into $WALLPAPERS_DEST${NC}"
+    else
+      echo -e "${BLUE}Skipping wallpaper copy. Your existing wallpapers are untouched.${NC}"
+    fi
+  else
+    echo -e "${BLUE}Skipping wallpaper setup. Your existing wallpapers are safe.${NC}"
+  fi
+else
+  mkdir -p "$WALLPAPERS_DEST"
+  cp "$DOTFILES_DIR/wallpapers/"* "$WALLPAPERS_DEST/"
+  echo -e "${GREEN}Wallpapers installed to $WALLPAPERS_DEST${NC}"
+fi
+
+# --- 10. Final Verification ---
 echo -e "${YELLOW}Verifying important Hyprland packages...${NC}"
 HYPR_PKGS=("hyprland" "hypridle" "hyprlock" "waybar")
 for pkg in "${HYPR_PKGS[@]}"; do
@@ -222,34 +344,64 @@ for pkg in "${HYPR_PKGS[@]}"; do
   fi
 done
 
-# --- 10. Setting up themes ---
+# --- 11. Setting up themes ---
 echo -e "${YELLOW}Setting up themes...${NC}"
-read -p "Generate theme configs and apply Gruvbox theme? (y/n): " setup_themes
+read -p "Apply adw-gtk3 theme and generate dynamic colors with matugen? (y/n): " setup_themes
 if [[ "$setup_themes" == "y" || "$setup_themes" == "Y" ]]; then
-  THEME_SWITCHER="$DOTFILES_DIR/config/theme-switcher"
-  if [ -f "$THEME_SWITCHER/generate_themes.sh" ]; then
-    echo -e "${BLUE}Generating theme configurations...${NC}"
-    bash "$THEME_SWITCHER/generate_themes.sh"
+
+  # Flatpak theming
+  if command -v flatpak &>/dev/null; then
+    echo -e "${YELLOW}Allowing Flatpak apps to access themes and icons...${NC}"
+    flatpak override --user --filesystem="$HOME"/.themes
+    flatpak override --user --filesystem="$HOME"/.icons
+    echo -e "${GREEN}Flatpak apps can now access themes and icons.${NC}"
   fi
 
-  if [ -f "$THEME_SWITCHER/theme-switcher.sh" ]; then
-    echo -e "${BLUE}Applying Gruvbox theme...${NC}"
-    bash "$THEME_SWITCHER/theme-switcher.sh" "Gruvbox-Dark-Soft"
+  # Set adw-gtk3 theme via gsettings
+  echo -e "${BLUE}Applying adw-gtk3-dark theme via gsettings...${NC}"
+  gsettings set org.gnome.desktop.interface gtk-theme "adw-gtk3-dark"
+  gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
+  echo -e "${GREEN}adw-gtk3-dark theme applied.${NC}"
+
+  # Run matugen for dynamic coloring
+  MATUGEN_WALLPAPER="$HOME/Pictures/wallpapers/building.png"
+  if [ -f "$MATUGEN_WALLPAPER" ]; then
+    echo -e "${BLUE}Generating dynamic colors with matugen...${NC}"
+    matugen -m dark image "$MATUGEN_WALLPAPER" --source-color-index 0
+    echo -e "${GREEN}Dynamic colors applied via matugen.${NC}"
+
+    # Re-run GTK symlinks now that .themes is in place and matugen has written colors
+    echo -e "${BLUE}Re-linking GTK theme files...${NC}"
+    ADW_GTK4="$HOME/.themes/adw-gtk3-dark/gtk-4.0"
+    ADW_GTK3="$HOME/.themes/adw-gtk3-dark/gtk-3.0"
+    GTK4_CONF="$CONF_DIR/gtk-4.0"
+    GTK3_CONF="$CONF_DIR/gtk-3.0"
+    mkdir -p "$GTK4_CONF" "$GTK3_CONF"
+    if [ -d "$HOME/.themes/adw-gtk3-dark" ]; then
+      for gtkfile in gtk.css gtk-dark.css libadwaita.css libadwaita-tweaks.css matugen-override.css colors.css assets; do
+        TARGET_LINK="$GTK4_CONF/$gtkfile"
+        THEME_SRC="$ADW_GTK4/$gtkfile"
+        if [ -e "$THEME_SRC" ]; then
+          rm -f "$TARGET_LINK"
+          ln -sf "$THEME_SRC" "$TARGET_LINK"
+        fi
+      done
+      if [ -e "$ADW_GTK3/colors.css" ]; then
+        rm -f "$GTK3_CONF/colors.css"
+        ln -sf "$ADW_GTK3/colors.css" "$GTK3_CONF/colors.css"
+      fi
+      echo -e "${GREEN}GTK theme symlinks updated.${NC}"
+    fi
+  else
+    echo -e "${YELLOW}Warning: $MATUGEN_WALLPAPER not found.${NC}"
+    echo -e "${YELLOW}You can run matugen manually with: matugen -m dark image <path-to-wallpaper> --source-color-index 0${NC}"
   fi
+
 else
   echo -e "${BLUE}Skipping theme setup.${NC}"
 fi
 
-# Flatpak theming
-if command -v flatpak &>/dev/null; then
-  echo -e "${YELLOW}Allowing Flatpak apps to access themes...${NC}"
-  flatpak override --user --filesystem="$HOME"/.themes
-  flatpak override --user --filesystem="$HOME"/.icons
-  flatpak override --user --env=GTK_THEME=Gruvbox-Dark-Soft
-  echo -e "${GREEN}Flatpak apps can now access themes and icons.${NC}"
-fi
-
-# --- 11. Final Message ---
+# --- 12. Final Message ---
 clear
 show_header
 if command -v gum &>/dev/null; then

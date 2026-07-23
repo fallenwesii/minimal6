@@ -1,4 +1,4 @@
-@import "/home/wesii/.config/wofi/colors.css";
+@import "colors.css";
 
 window {
     background: alpha(@background, 0.89);

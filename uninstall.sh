@@ -94,6 +94,7 @@ undo_link "$CONF_DIR/Kvantum" "kvantum-themes"
 
 # --- 3. Remove installed scripts ---
 echo -e "\n${YELLOW}Removing scripts...${NC}"
+
 NET_SPEED_SCRIPT="$HOME/.local/bin/net-speed.sh"
 if [[ -f "$NET_SPEED_SCRIPT" ]]; then
   echo -e "Removing $NET_SPEED_SCRIPT"
@@ -103,10 +104,20 @@ else
   echo -e "${BLUE}net-speed.sh not found at $NET_SPEED_SCRIPT${NC}"
 fi
 
+MINIMAL6_SCRIPT="$HOME/.local/bin/minimal6"
+if [[ -f "$MINIMAL6_SCRIPT" ]]; then
+  echo -e "Removing $MINIMAL6_SCRIPT"
+  rm "$MINIMAL6_SCRIPT"
+  echo -e "${GREEN}Removed minimal6${NC}"
+else
+  echo -e "${BLUE}minimal6 not found at $MINIMAL6_SCRIPT${NC}"
+fi
+
 # --- 4. Remove wallpapers ---
 echo -e "\n${YELLOW}Removing wallpapers...${NC}"
 WALLPAPERS_DIR="$HOME/Pictures/wallpapers"
 if [[ -d "$WALLPAPERS_DIR" ]]; then
+  echo -e "${YELLOW}Warning: Deleting $WALLPAPERS_DIR will remove ALL wallpapers, including any you added yourself.${NC}"
   read -p "Do you want to delete the wallpapers directory ($WALLPAPERS_DIR)? (y/n): " rm_wallpapers
   if [[ "$rm_wallpapers" == "y" || "$rm_wallpapers" == "Y" ]]; then
     rm -rf "$WALLPAPERS_DIR"

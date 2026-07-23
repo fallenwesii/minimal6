@@ -13,7 +13,7 @@ ShellRoot {
     property int cornerRadius: 14
     property color cornerColor: "#05070a"
     property string backlightDevice: "intel_backlight"
-    property string matugenColorsPath: "/home/wesii/.config/quickshell/generated/colors.json"
+    property string matugenColorsPath: "__HOME__/.config/quickshell/generated/colors.json"
     property var matugenColors: ({})
 
     property string osdIcon: "audio-volume-high-symbolic"

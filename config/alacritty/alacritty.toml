@@ -1,6 +1,6 @@
 [general]
 import = [
-    "/home/wesii/.config/alacritty/colors.toml"
+    "~/.config/alacritty/colors.toml"
 ]   
 
 [window.padding]
