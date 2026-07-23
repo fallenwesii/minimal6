@@ -9,7 +9,7 @@ git clone https://github.com/fallenwesii/minimal6.git
 chmod +x setup.sh && ./setup.sh
 ```
 
-Installs packages (pacman + AUR), links configs, generates themes, and applies Gruvbox.
+Installs packages (pacman + AUR), links configs, applies wallpaper and generates colors based on matugen .
 
 ## Uninstall
 
