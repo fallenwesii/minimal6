@@ -303,6 +303,19 @@ fi
 
 echo -e "${GREEN}Hardcoded path resolution complete.${NC}"
 
+# -- wofi/style.css: @import needs absolute path from root --
+WOI_CSS="$CONF_DIR/wofi/style.css"
+ABS_PATH="$HOME/.config/wofi/colors.css"
+
+if [ -f "$WOI_CSS" ]; then
+  sed_inplace "s|@import \"colors.css\";|@import \"$ABS_PATH\";|g" "$WOI_CSS"
+  echo -e "${GREEN}Fixed @import path in wofi/style.css to $ABS_PATH${NC}"
+elif [ -L "$WOI_CSS" ]; then
+  # It's a symlink: operate on the real file in dotfiles dir
+  sed_inplace "s|@import \"colors.css\";|@import \"$ABS_PATH\";|g" "$DOTFILES_DIR/config/wofi/style.css"
+  echo -e "${GREEN}Fixed @import path in wofi/style.css (via dotfiles symlink)${NC}"
+fi
+
 # --- 9. Wallpapers ---
 echo -e "${YELLOW}Setting up wallpapers...${NC}"
 WALLPAPERS_DEST="$HOME/Pictures/wallpapers"
