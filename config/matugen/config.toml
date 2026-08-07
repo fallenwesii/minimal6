@@ -2,7 +2,7 @@
 prefer = "value"
 
 [config.wallpaper]
-command = "awww img --transition-type wipe {{ image }}"
+command = "awww img --transition-type  grow  {{ image }}"
 set = true
 
 # ----------------------------------------------------
@@ -116,3 +116,7 @@ output_path = '~/.config/opencode/themes/matugen.json'
 input_path = '~/.config/matugen/templates/quickshell.json'
 output_path = '~/.config/quickshell/generated/colors.json'
 post_hook = 'quickshell kill >/dev/null 2>&1 || true; qs -d >/dev/null 2>&1'
+
+[templates.obsidian]
+input_path = '~/.config/matugen/templates/obsidian.css'
+output_path = '~/Documents/notes/.obsidian/snippets/matugen.css'

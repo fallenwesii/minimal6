@@ -2,7 +2,6 @@
 
 # Configuration Paths
 WALL_DIR="$HOME/Pictures/wallpapers"
-STARTUP_CONF="$HOME/.config/hypr/conf/startup.conf"
 CACHE_DIR="$HOME/.cache/wallpaper-picker"
 
 # Ensure directories exist
@@ -182,15 +181,15 @@ draw_search_bar() {
   local search_text=""
   if [ -z "$QUERY" ]; then
     if [ "$SEARCH_FOCUSED" = true ]; then
-      search_text=" \e[38;2;${primary_rgb}m|\e[38;5;244mSearch\e[0m"
+      search_text="  \e[38;2;${primary_rgb}m|\e[38;5;244mSearch\e[0m"
     else
-      search_text=" \e[38;5;244mSearch\e[0m"
+      search_text="  \e[38;5;244mSearch\e[0m"
     fi
   else
     if [ "$SEARCH_FOCUSED" = true ]; then
-      search_text=" ${QUERY}\e[38;2;${primary_rgb}m|\e[0m"
+      search_text="  ${QUERY}\e[38;2;${primary_rgb}m|\e[0m"
     else
-      search_text=" ${QUERY}"
+      search_text="  ${QUERY}"
     fi
   fi
 
@@ -298,15 +297,20 @@ redraw_screen() {
   draw_search_bar
 }
 
-# Cleanup on exit
+# Cleanup and exit window on q/ESC/interrupts
 cleanup() {
   tput cnorm
   tput rmcup
   printf '\e[?7h'
   kitty +kitten icat --clear 2>/dev/null
+
+  # Kill parent Kitty window process if set
+  if [ -n "$KITTY_PID" ]; then
+    kill -9 "$KITTY_PID" 2>/dev/null
+  fi
   exit 0
 }
-trap cleanup SIGINT SIGTERM EXIT
+trap cleanup SIGINT SIGTERM
 
 handle_resize() {
   calculate_layout
@@ -435,10 +439,7 @@ while true; do
   esac
 done
 
-# Disable EXIT trap so it doesn't clean up twice
-trap - EXIT SIGINT SIGTERM
-
-# Restore terminal state
+# Restore terminal state for image/wallpaper application sequence
 tput cnorm
 tput rmcup
 printf '\e[?7h'
@@ -449,29 +450,11 @@ clear
 FULL_PATH="${FILTERED_WALLPAPERS[current_idx]}"
 
 if [ -n "$FULL_PATH" ] && [ -f "$FULL_PATH" ]; then
-  # 1. Update the wallpaper via awww instantly
-  if command -v awww &>/dev/null; then
-    awww img "$FULL_PATH" --transition-type simple
-    CMD="awww"
-  elif command -v swww &>/dev/null; then
-    swww img "$FULL_PATH" --transition-type simple
-    CMD="swww"
-  else
-    CMD=""
-  fi
-
-  # 2. Parse color generation through Matugen using automated dominant color picking
+  # Run matugen: this both applies the wallpaper (via its own [config.wallpaper]
+  # hook, which calls awww) and regenerates all color templates (sway, waybar,
+  # wofi, gtk, kitty, etc.), reloading each one via their post_hooks.
   if command -v matugen &>/dev/null; then
     matugen image "$FULL_PATH" -m dark --source-color-index 0
-  fi
-
-  # 3. Update startup.conf persistently so it sticks across reboots/logouts
-  if [ -n "$CMD" ] && [ -f "$STARTUP_CONF" ]; then
-    if grep -q "exec-once = $CMD img" "$STARTUP_CONF"; then
-      sed -i "s|exec-once = $CMD img .*|exec-once = $CMD img \"$FULL_PATH\" --transition-type none|g" "$STARTUP_CONF"
-    else
-      echo "exec-once = $CMD img \"$FULL_PATH\" --transition-type none" >>"$STARTUP_CONF"
-    fi
   fi
 
   # Desktop notification indicating success
@@ -480,6 +463,11 @@ if [ -n "$FULL_PATH" ] && [ -f "$FULL_PATH" ]; then
   else
     notify-send "Theme Updated" "Applied wallpaper: $(basename "$FULL_PATH")"
   fi
+fi
+
+# Close host Kitty window process on normal completion
+if [ -n "$KITTY_PID" ]; then
+  kill -9 "$KITTY_PID" 2>/dev/null
 fi
 
 exit 0

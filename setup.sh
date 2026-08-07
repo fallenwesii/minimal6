@@ -151,14 +151,20 @@ confirm_and_link() {
   local target=$2
   local name=$3
 
-  if [[ -e "$target" ]]; then
+  if [[ -e "$target" || -L "$target" ]]; then
     echo -e "${YELLOW}An existing configuration for $name was found.${NC}"
     read -p "Do you want to replace it? (y/n): " choice
     if [[ "$choice" == "y" || "$choice" == "Y" ]]; then
-      echo "Backing up existing $name..."
-      mv "$target" "${target}.bak_$(date +%Y%m%d_%H%M%S)"
-      ln -sf "$source" "$target"
-      echo -e "${GREEN}Linked $name${NC}"
+      if [[ -L "$target" && "$(readlink -f "$target")" == "$DOTFILES_DIR"* ]]; then
+        echo "Updating link for $name (already points to dotfiles)..."
+        ln -sf "$source" "$target"
+        echo -e "${GREEN}Linked $name${NC}"
+      else
+        echo "Backing up existing $name..."
+        mv "$target" "${target}.bak_$(date +%Y%m%d_%H%M%S)"
+        ln -sf "$source" "$target"
+        echo -e "${GREEN}Linked $name${NC}"
+      fi
     else
       echo "Skipping $name"
     fi
@@ -171,7 +177,22 @@ confirm_and_link() {
 # Link config directories
 for dir in "$DOTFILES_DIR/config"/*; do
   dir_name=$(basename "$dir")
-  confirm_and_link "$dir" "$CONF_DIR/$dir_name" "$dir_name"
+  if [[ "$dir_name" == "gtk-3.0" ]]; then
+    # Handle gtk-3.0 specially because of private bookmarks file
+    if [[ -L "$CONF_DIR/$dir_name" ]]; then
+      echo "Removing old gtk-3.0 directory symlink..."
+      rm -f "$CONF_DIR/$dir_name"
+    fi
+    mkdir -p "$CONF_DIR/$dir_name"
+    for file in "$dir"/*; do
+      file_name=$(basename "$file")
+      if [[ "$file_name" != "bookmarks" ]]; then
+        confirm_and_link "$file" "$CONF_DIR/$dir_name/$file_name" "$dir_name/$file_name"
+      fi
+    done
+  else
+    confirm_and_link "$dir" "$CONF_DIR/$dir_name" "$dir_name"
+  fi
 done
 
 # Handle special files/dirs
@@ -229,17 +250,6 @@ sed_inplace() {
   sed -i "$1" "$2"
 }
 
-# -- gtk-3.0/bookmarks: contains __HOME__ placeholder --
-BOOKMARKS="$CONF_DIR/gtk-3.0/bookmarks"
-if [ -f "$BOOKMARKS" ]; then
-  sed_inplace "s|__HOME__|$HOME|g" "$BOOKMARKS"
-  echo -e "${GREEN}Fixed paths in gtk-3.0/bookmarks${NC}"
-elif [ -L "$BOOKMARKS" ]; then
-  # It's a symlink: operate on the real file in dotfiles dir
-  sed_inplace "s|__HOME__|$HOME|g" "$DOTFILES_DIR/config/gtk-3.0/bookmarks"
-  echo -e "${GREEN}Fixed paths in gtk-3.0/bookmarks (via dotfiles symlink)${NC}"
-fi
-
 # -- quickshell/shell.qml: __HOME__ placeholder for matugenColorsPath --
 SHELL_QML="$CONF_DIR/quickshell/shell.qml"
 if [ -f "$SHELL_QML" ]; then
@@ -257,15 +267,6 @@ if [ -f "$COLORS_CONF" ] || [ -L "$COLORS_CONF" ]; then
   REAL_COLORS=$(realpath "$COLORS_CONF" 2>/dev/null || echo "$COLORS_CONF")
   sed_inplace "s|~/Pictures|$HOME/Pictures|g" "$REAL_COLORS"
   echo -e "${GREEN}Fixed \$image path in hypr/colors.conf${NC}"
-fi
-
-# -- hypr/conf/startup.conf: awww wallpaper path --
-STARTUP_CONF="$CONF_DIR/hypr/conf/startup.conf"
-if [ -f "$STARTUP_CONF" ] || [ -L "$STARTUP_CONF" ]; then
-  REAL_STARTUP=$(realpath "$STARTUP_CONF" 2>/dev/null || echo "$STARTUP_CONF")
-  # $HOME is already used there (shell expands it), no sed needed
-  # But if it still has a hardcoded path, replace it
-  sed_inplace "s|/home/[a-zA-Z0-9_-]*/Pictures|$HOME/Pictures|g" "$REAL_STARTUP"
 fi
 
 # -- GTK symlinks: recreate the gtk-4.0 and gtk-3.0 symlinks that pointed --
@@ -322,7 +323,7 @@ WALLPAPERS_DEST="$HOME/Pictures/wallpapers"
 
 if [ -d "$WALLPAPERS_DEST" ]; then
   echo -e "${YELLOW}A wallpapers directory already exists at $WALLPAPERS_DEST.${NC}"
-  echo -e "${YELLOW}To avoid overwriting your existing wallpapers, this setup will NOT touch it.${NC}"
+  echo -e "${YELLOW}This setup avoids overwriting your existing wallpapers.${NC}"
   echo ""
   read -p "Would you like to back it up first before adding new wallpapers? (y/n): " backup_choice
   if [[ "$backup_choice" == "y" || "$backup_choice" == "Y" ]]; then
@@ -406,6 +407,7 @@ if [[ "$setup_themes" == "y" || "$setup_themes" == "Y" ]]; then
       echo -e "${GREEN}GTK theme symlinks updated.${NC}"
     fi
   else
+    sleep 8
     echo -e "${YELLOW}Warning: $MATUGEN_WALLPAPER not found.${NC}"
     echo -e "${YELLOW}You can run matugen manually with: matugen -m dark image <path-to-wallpaper> --source-color-index 0${NC}"
   fi

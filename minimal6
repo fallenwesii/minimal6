@@ -176,17 +176,6 @@ def update_appearance(cfg_key, value):
     return True
 
 
-def update_startup_wallpaper(path):
-    content = readf(STARTUP_CONF)
-    if re.search(r'exec-once\s*=\s*awww\s+img', content):
-        new = re.sub(
-            r'exec-once\s*=\s*awww\s+img\s+.*',
-            f'exec-once = awww img "{path}" --transition-type none',
-            content,
-        )
-    else:
-        new = content.rstrip() + f'\nexec-once = awww img "{path}" --transition-type none\n'
-    writef(STARTUP_CONF, new)
 
 
 def hyprctl_bool(opt):
@@ -278,7 +267,6 @@ def wallpaper_ui(primary):
             full_path = os.path.abspath(os.path.join(WALLPAPERS_DIR, wps[sel]))
             notify("Generating colors with Matugen...")
             run(["matugen", "-m", "dark", "image", full_path, "--source-color-index", "0"])
-            update_startup_wallpaper(full_path)
             run(["awww", "img", full_path, "--transition-type", "none"])
             run(["hyprctl", "reload"])
             primary = get_primary_color()

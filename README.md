@@ -18,15 +18,7 @@ Minimal Hyprland dotfiles.
 
 ## Screenshots
 
-<p align="center">
-  <img src="screenshots/Desktop.png" alt="Desktop" width="32%">
-  <img src="screenshots/wofi.png" alt="Wofi" width="32%">
-  <img src="screenshots/quick-settings.png" alt="Quick Settings" width="32%">
-  <img src="screenshots/wallpaper-switcher.png" alt="Wallpaper Switcher" width="32%">
-  <img src="screenshots/vscode.png" alt="vscode/vscodium" width="32%">
-  <img src="screenshots/yazi.png" alt="yazi" width="32%">
-
-</p>
+![m6](/screenshots/desktop.png)
 
 
 ## Setup
@@ -53,3 +45,8 @@ To undo the symlinks, scripts, and theme overrides set up by minimal6 (without u
 
  `Super + H`  to view all keybindings.   
  `Super + S` for Quick-settings
+
+
+## Assets
+
+Wallpapers and other optional resources are available in the **[minimal6-assets](https://github.com/fallenwesii/minimal6-assets)** repository.
