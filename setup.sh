@@ -146,28 +146,34 @@ DOTFILES_DIR=$(pwd)
 CONF_DIR="$HOME/.config"
 mkdir -p "$HOME/.local/bin"
 
+# Detect whether a target already belongs to the minimal6 dotfiles repo
+# (i.e. resolves inside $DOTFILES_DIR). Only this repo is treated as
+# dotfiles-managed; anything else is a foreign config and gets backed up.
+is_dotfiles_dir() {
+  local dir=$1
+  [[ "$(readlink -f "$dir" 2>/dev/null)" == "$DOTFILES_DIR"* ]]
+}
+
+is_dotfiles_link() {
+  is_dotfiles_dir "$1"
+}
+
 confirm_and_link() {
   local source=$1
   local target=$2
   local name=$3
 
   if [[ -e "$target" || -L "$target" ]]; then
-    echo -e "${YELLOW}An existing configuration for $name was found.${NC}"
-    read -p "Do you want to replace it? (y/n): " choice
-    if [[ "$choice" == "y" || "$choice" == "Y" ]]; then
-      if [[ -L "$target" && "$(readlink -f "$target")" == "$DOTFILES_DIR"* ]]; then
-        echo "Updating link for $name (already points to dotfiles)..."
-        ln -sf "$source" "$target"
-        echo -e "${GREEN}Linked $name${NC}"
-      else
-        echo "Backing up existing $name..."
-        mv "$target" "${target}.bak_$(date +%Y%m%d_%H%M%S)"
-        ln -sf "$source" "$target"
-        echo -e "${GREEN}Linked $name${NC}"
-      fi
+    if is_dotfiles_link "$target"; then
+      # Already points into $DOTFILES_DIR: it's ours, just remove and relink.
+      echo -e "${YELLOW}Removing existing $name (points to dotfiles)...${NC}"
+      rm -rf "$target"
     else
-      echo "Skipping $name"
+      echo -e "${YELLOW}Backing up existing $name...${NC}"
+      mv "$target" "${target}.bak_$(date +%Y%m%d_%H%M%S)"
     fi
+    ln -sf "$source" "$target"
+    echo -e "${GREEN}Linked $name${NC}"
   else
     ln -sf "$source" "$target"
     echo -e "${GREEN}Linked $name${NC}"
@@ -195,10 +201,29 @@ for dir in "$DOTFILES_DIR/config"/*; do
   fi
 done
 
+# Clean up stale *.bak_* symlinks that were produced by previous buggy runs.
+# These are useless: they are just symlinks back into a minimal6 repo, not
+# real backups. Remove them so they stop accumulating.
+echo -e "${YELLOW}Removing stale dotfiles backup symlinks...${NC}"
+for bak in "$CONF_DIR"/*.bak_*; do
+  [ -L "$bak" ] || continue
+  if is_dotfiles_link "$bak"; then
+    rm -f "$bak"
+    echo -e "  ${BLUE}Removed $bak${NC}"
+  fi
+done
+
 # Handle special files/dirs
 confirm_and_link "$DOTFILES_DIR/.themes" "$HOME/.themes" ".themes"
 confirm_and_link "$DOTFILES_DIR/.icons" "$HOME/.icons" ".icons"
-confirm_and_link "$DOTFILES_DIR/.bashrc" "$HOME/.bashrc" ".bashrc"
+
+# .bashrc is sensitive — always ask before touching it.
+read -p "Link minimal6 ~/.bashrc to your home? (y/n): " link_bashrc
+if [[ "$link_bashrc" == "y" || "$link_bashrc" == "Y" ]]; then
+  confirm_and_link "$DOTFILES_DIR/.bashrc" "$HOME/.bashrc" ".bashrc"
+else
+  echo -e "${BLUE}Skipping .bashrc. Your current ~/.bashrc is untouched.${NC}"
+fi
 
 # Kvantum themes
 if command -v kvantummanager &>/dev/null; then
