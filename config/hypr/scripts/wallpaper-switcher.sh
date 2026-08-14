@@ -57,10 +57,10 @@ generate_thumbnails() {
       if [ ! -f "$color_path" ] || [ "$file" -nt "$color_path" ]; then
         if command -v matugen &>/dev/null && command -v jq &>/dev/null; then
           # Extract colors from the original wallpaper file in Pictures/wallpapers
-          matugen image "$file" -j hex --dry-run 2>/dev/null | jq -r '.colors.primary.default.color, .colors.on_primary.default.color, .colors.primary_container.default.color, .colors.on_primary_container.default.color' > "$color_path"
+          matugen image "$file" -j hex --dry-run 2>/dev/null | jq -r '.colors.primary.default.color, .colors.on_primary.default.color, .colors.primary_container.default.color, .colors.on_primary_container.default.color' >"$color_path"
           colors_generated=true
         else
-          echo -e "#ffffff\n#000000\n#333333\n#ffffff" > "$color_path"
+          echo -e "#ffffff\n#000000\n#333333\n#ffffff" >"$color_path"
         fi
       fi
 
@@ -107,9 +107,9 @@ hex_to_rgb() {
 get_wallpaper_colors() {
   local filename=$(basename "$1")
   local color_path="$CACHE_DIR/${filename}.colors"
-  
+
   if [ -f "$color_path" ]; then
-    mapfile -t colors < "$color_path"
+    mapfile -t colors <"$color_path"
     if [ ${#colors[@]} -eq 4 ]; then
       primary_color="${colors[0]}"
       on_primary="${colors[1]}"
@@ -141,7 +141,7 @@ calculate_layout() {
   if ! [[ "$LINES" =~ ^[0-9]+$ ]]; then LINES=24; fi
 
   # Choose 5 or 7 thumbnails based on screen width
-  if (( COLS >= 160 )); then
+  if ((COLS >= 160)); then
     N=7
   else
     N=5
@@ -153,26 +153,26 @@ calculate_layout() {
   SPACING=4
 
   # Scale layout if it doesn't fit the screen width
-  while (( N * T_WIDTH + (N - 1) * SPACING > COLS - 4 )) && (( T_WIDTH > 10 )); do
-    T_WIDTH=$(( T_WIDTH - 2 ))
-    T_HEIGHT=$(( T_WIDTH / 2 ))
-    if (( SPACING > 2 )); then
-      SPACING=$(( SPACING - 1 ))
+  while ((N * T_WIDTH + (N - 1) * SPACING > COLS - 4)) && ((T_WIDTH > 10)); do
+    T_WIDTH=$((T_WIDTH - 2))
+    T_HEIGHT=$((T_WIDTH / 2))
+    if ((SPACING > 2)); then
+      SPACING=$((SPACING - 1))
     fi
   done
 
-  local total_w=$(( N * T_WIDTH + (N - 1) * SPACING ))
-  START_COL=$(( (COLS - total_w) / 2 ))
-  if (( START_COL < 1 )); then START_COL=1; fi
+  local total_w=$((N * T_WIDTH + (N - 1) * SPACING))
+  START_COL=$(((COLS - total_w) / 2))
+  if ((START_COL < 1)); then START_COL=1; fi
 
   # Center the combined block of height T_HEIGHT + 3
-  START_ROW=$(( (LINES - T_HEIGHT - 3) / 2 ))
-  if (( START_ROW < 1 )); then START_ROW=1; fi
+  START_ROW=$(((LINES - T_HEIGHT - 3) / 2))
+  if ((START_ROW < 1)); then START_ROW=1; fi
 }
 
 draw_search_bar() {
   local primary_rgb
-  if (( FILTERED_COUNT > 0 )); then
+  if ((FILTERED_COUNT > 0)); then
     primary_rgb=$(hex_to_rgb "$primary_color")
   else
     primary_rgb="255;255;255"
@@ -193,16 +193,16 @@ draw_search_bar() {
     fi
   fi
 
-  local s_row=$(( START_ROW + T_HEIGHT + 2 ))
+  local s_row=$((START_ROW + T_HEIGHT + 2))
   echo -ne "\e[${s_row};1H\e[K"
 
-  local display_len=$(( 3 + ${#QUERY} ))
+  local display_len=$((3 + ${#QUERY}))
   if [ -z "$QUERY" ]; then
     display_len=9
   fi
 
-  local search_col=$(( (COLS - display_len) / 2 ))
-  if (( search_col < 1 )); then search_col=1; fi
+  local search_col=$(((COLS - display_len) / 2))
+  if ((search_col < 1)); then search_col=1; fi
 
   echo -ne "\e[${s_row};${search_col}H${search_text}"
 }
@@ -215,12 +215,12 @@ update_filter() {
     mapfile -t FILTERED_WALLPAPERS < <(printf "%s\n" "${ALL_WALLPAPERS[@]}" | fzf --filter="$QUERY" 2>/dev/null | shuf)
   fi
   FILTERED_COUNT=${#FILTERED_WALLPAPERS[@]}
-  
-  if (( FILTERED_COUNT == 0 )); then
+
+  if ((FILTERED_COUNT == 0)); then
     current_idx=0
-  elif (( current_idx >= FILTERED_COUNT )); then
-    current_idx=$(( FILTERED_COUNT - 1 ))
-  elif (( current_idx < 0 )); then
+  elif ((current_idx >= FILTERED_COUNT)); then
+    current_idx=$((FILTERED_COUNT - 1))
+  elif ((current_idx < 0)); then
     current_idx=0
   fi
 }
@@ -232,13 +232,13 @@ redraw_screen() {
   if ! [[ "$COLS" =~ ^[0-9]+$ ]]; then COLS=80; fi
   if ! [[ "$LINES" =~ ^[0-9]+$ ]]; then LINES=24; fi
 
-  if (( FILTERED_COUNT == 0 )); then
+  if ((FILTERED_COUNT == 0)); then
     # Clear screen to show "No matching wallpapers"
     kitty +kitten icat --clear 2>/dev/null
     echo -ne "\e[H\e[2J"
     local msg="No matching wallpapers found"
-    local msg_col=$(( (COLS - ${#msg}) / 2 ))
-    echo -ne "\e[$(( LINES / 2 ));${msg_col}H\e[1;31m$msg\e[0m"
+    local msg_col=$(((COLS - ${#msg}) / 2))
+    echo -ne "\e[$((LINES / 2));${msg_col}H\e[1;31m$msg\e[0m"
     draw_search_bar
     return
   fi
@@ -247,20 +247,20 @@ redraw_screen() {
   get_wallpaper_colors "$active_wall"
 
   # Draw thumbnails in parallel to temporary buffer files to prevent interleaving and reduce latency
-  local display_n=$(( N < FILTERED_COUNT ? N : FILTERED_COUNT ))
-  local half_n=$(( display_n / 2 ))
-  for (( i = 0; i < display_n; i++ )); do
-    local offset=$(( i - half_n ))
-    local w_idx=$(( (current_idx + offset + FILTERED_COUNT) % FILTERED_COUNT ))
-    local slot_col=$(( START_COL + (i + (N - display_n) / 2) * (T_WIDTH + SPACING) ))
+  local display_n=$((N < FILTERED_COUNT ? N : FILTERED_COUNT))
+  local half_n=$((display_n / 2))
+  for ((i = 0; i < display_n; i++)); do
+    local offset=$((i - half_n))
+    local w_idx=$(((current_idx + offset + FILTERED_COUNT) % FILTERED_COUNT))
+    local slot_col=$((START_COL + (i + (N - display_n) / 2) * (T_WIDTH + SPACING)))
 
     local wall_path="${FILTERED_WALLPAPERS[w_idx]}"
     local wall_name=$(basename "$wall_path")
     local thumb_path="$CACHE_DIR/${wall_name}.png"
     local border_thumb_path="$CACHE_DIR/${wall_name}.border.png"
     local preview_file
-    
-    if (( offset == 0 )); then
+
+    if ((offset == 0)); then
       # Selected thumbnail uses the 3px bordered cached image
       if [ -f "$border_thumb_path" ]; then
         preview_file="$border_thumb_path"
@@ -279,7 +279,7 @@ redraw_screen() {
     fi
 
     # Render into buffer files in parallel
-    kitty +kitten icat --transfer-mode=file --stdin=no --scale-up --place="${T_WIDTH}x${T_HEIGHT}@${slot_col}x${START_ROW}" "$preview_file" > "/tmp/wall_picker_icat_$i" 2>/dev/null &
+    kitty +kitten icat --transfer-mode=file --stdin=no --scale-up --place="${T_WIDTH}x${T_HEIGHT}@${slot_col}x${START_ROW}" "$preview_file" >"/tmp/wall_picker_icat_$i" 2>/dev/null &
   done
   wait
 
@@ -288,7 +288,7 @@ redraw_screen() {
   kitty +kitten icat --clear 2>/dev/null
 
   # Instantly dump all buffered images sequentially
-  for (( i = 0; i < N; i++ )); do
+  for ((i = 0; i < N; i++)); do
     cat "/tmp/wall_picker_icat_$i" 2>/dev/null
     rm -f "/tmp/wall_picker_icat_$i"
   done
@@ -366,76 +366,76 @@ while true; do
   fi
 
   case "$KEY" in
-    # Arrow keys (always navigate)
-    $'\e[D')
-      if (( FILTERED_COUNT > 0 )); then
-        current_idx=$(( (current_idx - 1 + FILTERED_COUNT) % FILTERED_COUNT ))
+  # Arrow keys (always navigate)
+  $'\e[D')
+    if ((FILTERED_COUNT > 0)); then
+      current_idx=$(((current_idx - 1 + FILTERED_COUNT) % FILTERED_COUNT))
+      redraw_screen
+    fi
+    ;;
+  $'\e[C')
+    if ((FILTERED_COUNT > 0)); then
+      current_idx=$(((current_idx + 1) % FILTERED_COUNT))
+      redraw_screen
+    fi
+    ;;
+  # Enter (apply selection)
+  "")
+    if ((FILTERED_COUNT > 0)); then
+      break
+    fi
+    ;;
+  # Escape
+  $'\e')
+    if [ "$SEARCH_FOCUSED" = true ]; then
+      SEARCH_FOCUSED=false
+      redraw_screen
+    else
+      cleanup
+    fi
+    ;;
+  # Backspace (only in search mode)
+  $'\x7f' | $'\b')
+    if [ "$SEARCH_FOCUSED" = true ]; then
+      if [ -n "$QUERY" ]; then
+        QUERY="${QUERY%?}"
+        update_filter
         redraw_screen
       fi
-      ;;
-    $'\e[C')
-      if (( FILTERED_COUNT > 0 )); then
-        current_idx=$(( (current_idx + 1) % FILTERED_COUNT ))
-        redraw_screen
-      fi
-      ;;
-    # Enter (apply selection)
-    "")
-      if (( FILTERED_COUNT > 0 )); then
-        break
-      fi
-      ;;
-    # Escape
-    $'\e')
-      if [ "$SEARCH_FOCUSED" = true ]; then
-        SEARCH_FOCUSED=false
-        redraw_screen
-      else
+    fi
+    ;;
+  # Other keys
+  *)
+    if [ "$SEARCH_FOCUSED" = false ]; then
+      case "$KEY" in
+      h | H)
+        if ((FILTERED_COUNT > 0)); then
+          current_idx=$(((current_idx - 1 + FILTERED_COUNT) % FILTERED_COUNT))
+          redraw_screen
+        fi
+        ;;
+      l | L)
+        if ((FILTERED_COUNT > 0)); then
+          current_idx=$(((current_idx + 1) % FILTERED_COUNT))
+          redraw_screen
+        fi
+        ;;
+      q | Q)
         cleanup
+        ;;
+      i | I | s | S | /)
+        SEARCH_FOCUSED=true
+        redraw_screen
+        ;;
+      esac
+    else
+      if [[ ${#KEY} -eq 1 && "$KEY" =~ [[:print:]] ]]; then
+        QUERY+="$KEY"
+        update_filter
+        redraw_screen
       fi
-      ;;
-    # Backspace (only in search mode)
-    $'\x7f'|$'\b')
-      if [ "$SEARCH_FOCUSED" = true ]; then
-        if [ -n "$QUERY" ]; then
-          QUERY="${QUERY%?}"
-          update_filter
-          redraw_screen
-        fi
-      fi
-      ;;
-    # Other keys
-    *)
-      if [ "$SEARCH_FOCUSED" = false ]; then
-        case "$KEY" in
-          h|H)
-            if (( FILTERED_COUNT > 0 )); then
-              current_idx=$(( (current_idx - 1 + FILTERED_COUNT) % FILTERED_COUNT ))
-              redraw_screen
-            fi
-            ;;
-          l|L)
-            if (( FILTERED_COUNT > 0 )); then
-              current_idx=$(( (current_idx + 1) % FILTERED_COUNT ))
-              redraw_screen
-            fi
-            ;;
-          q|Q)
-            cleanup
-            ;;
-          i|I|s|S|/)
-            SEARCH_FOCUSED=true
-            redraw_screen
-            ;;
-        esac
-      else
-        if [[ ${#KEY} -eq 1 && "$KEY" =~ [[:print:]] ]]; then
-          QUERY+="$KEY"
-          update_filter
-          redraw_screen
-        fi
-      fi
-      ;;
+    fi
+    ;;
   esac
 done
 
@@ -454,13 +454,16 @@ if [ -n "$FULL_PATH" ] && [ -f "$FULL_PATH" ]; then
   # hook, which calls awww) and regenerates all color templates (sway, waybar,
   # wofi, gtk, kitty, etc.), reloading each one via their post_hooks.
   if command -v matugen &>/dev/null; then
-    matugen image "$FULL_PATH" -m dark --source-color-index 0
+    matugen image "$FULL_PATH" -m dark --source-color-index 0 --lightness-dark 0.08 --contrast 0
   fi
 
   # Desktop notification indicating success
   if command -v dunstify &>/dev/null; then
     dunstify -u low -a "Wallpaper Picker" -i "$FULL_PATH" "Theme Updated" "Applied wallpaper: $(basename "$FULL_PATH")"
+    echo "dark" >~/.cache/matugen_mode
+
   else
+    echo "dark" >~/.cache/matugen_mode
     notify-send "Theme Updated" "Applied wallpaper: $(basename "$FULL_PATH")"
   fi
 fi

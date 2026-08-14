@@ -120,3 +120,7 @@ post_hook = 'quickshell kill >/dev/null 2>&1 || true; qs -d >/dev/null 2>&1'
 [templates.obsidian]
 input_path = '~/.config/matugen/templates/obsidian.css'
 output_path = '~/Documents/notes/.obsidian/snippets/matugen.css'
+
+[templates.vivaldi]
+input_path = '~/.config/matugen/templates/vivaldi.css'
+output_path = '~/.config/vivaldi/vivaldi.css'

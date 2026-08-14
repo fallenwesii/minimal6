@@ -18,14 +18,22 @@ CLR = "\033[2J\033[H"
 
 
 def get_primary_color():
+    return get_hypr_color("primary", "ffb4ac")
+
+
+def get_hypr_color(name, fallback):
     if not os.path.exists(COLORS_FILE):
-        return "ffb4ac"
+        return fallback
     with open(COLORS_FILE) as f:
         for line in f:
-            m = re.search(r'\$primary\s*=\s*rgba?\(([0-9a-fA-F]{6,8})', line)
+            m = re.search(rf'\${re.escape(name)}\s*=\s*rgba?\(([0-9a-fA-F]{{6,8}})', line)
             if m:
                 return m.group(1)[:6].lower()
-    return "ffb4ac"
+    return fallback
+
+
+def get_dim_color(primary):
+    return get_hypr_color("outline_variant", dim_color(primary, 0.4))
 
 
 def hex_to_rgb(h):
@@ -192,15 +200,14 @@ def pgrep_running(name):
 
 def show_menu(title, items, primary, back=True, default_sel=0):
     sel = default_sel
-    dim_p = dim_color(primary, 0.4)
+    dim_p = get_dim_color(primary)
     while True:
         clear()
         banner(primary)
-        print(f"\n{c_fg(primary)}{BOLD}{title}{RST}")
-        print(f"{c_fg(dim_p)}{'─' * 40}{RST}")
+        print()
         for i, item in enumerate(items):
             if i == sel:
-                print(f"{c_fg(primary)}{BOLD}  → {item}{RST}")
+                print(f"{c_fg(primary)}{BOLD}  • {item}{RST}")
             else:
                 print(f"{c_fg(dim_p)}    {item}{RST}")
         print()
@@ -238,7 +245,7 @@ def wallpaper_ui(primary):
     view_size = 10
 
     while True:
-        dim_p = dim_color(primary, 0.4)
+        dim_p = get_dim_color(primary)
         clear()
         banner(primary)
         print(f"\n{c_fg(primary)}{BOLD}Wallpapers (Total: {len(wps)}){RST}\n")
@@ -253,7 +260,7 @@ def wallpaper_ui(primary):
             wp = wps[i]
             idx_str = f"{i+1}."
             if i == sel:
-                print(f"{c_fg(primary)}{BOLD}  → {idx_str:>3} {wp[:44]}{RST}")
+                print(f"{c_fg(primary)}{BOLD}  • {idx_str:>3} {wp[:44]}{RST}")
             else:
                 print(f"{c_fg(dim_p)}    {idx_str:>3} {wp[:44]}{RST}")
 
@@ -281,14 +288,14 @@ def wallpaper_ui(primary):
 def simple_picker(primary, title, cfg_key, lo, hi):
     vals = list(range(lo, hi + 1))
     sel = 0
-    dim_p = dim_color(primary, 0.4)
+    dim_p = get_dim_color(primary)
     while True:
         clear()
         banner(primary)
         print(f"\n{c_fg(primary)}{BOLD}{title}{RST}\n")
         for i, v in enumerate(vals):
             if i == sel:
-                print(f"{c_fg(primary)}{BOLD}  → {v}{RST}")
+                print(f"{c_fg(primary)}{BOLD}  • {v}{RST}")
             else:
                 print(f"{c_fg(dim_p)}    {v}{RST}")
         print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Select  ↑↓: Navigate{RST}")
@@ -313,7 +320,7 @@ def simple_picker(primary, title, cfg_key, lo, hi):
 
 def toggle_ui(primary, name, get_status, set_on, set_off):
     first = True
-    dim_p = dim_color(primary, 0.4)
+    dim_p = get_dim_color(primary)
     while True:
         st = get_status()
         if first:
@@ -327,7 +334,7 @@ def toggle_ui(primary, name, get_status, set_on, set_off):
         print(f"{c_fg(dim_p)}status: {status_str}{RST}\n")
         for i, item in enumerate(items):
             if i == sel:
-                print(f"{c_fg(primary)}{BOLD}  → {item}{RST}")
+                print(f"{c_fg(primary)}{BOLD}  • {item}{RST}")
             else:
                 print(f"{c_fg(dim_p)}    {item}{RST}")
         print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Select  1-2: Select  ↑↓: Navigate{RST}")
@@ -413,12 +420,12 @@ def toggle_dnd(primary):
 
 
 def toggle_caffeine(primary):
-    def status(): return pgrep_running("hypridle")
+    def status(): return not pgrep_running("hypridle")
     def on():
-        run(["hyprctl", "dispatch", "exec", f"hypridle -c {os.path.join(HYPR_DIR, 'hypridle.conf')}"])
-    def off():
         run(["pkill", "-9", "-x", "hypridle"])
         run(["killall", "-9", "hypridle"])
+    def off():
+        run(["hyprctl", "dispatch", "exec", f"hypridle -c {os.path.join(HYPR_DIR, 'hypridle.conf')}"])
     toggle_ui(primary, "Caffeine", status, on, off)
 
 
@@ -446,7 +453,7 @@ def open_config():
 # ── Connectivity ──
 
 def wifi_menu(primary):
-    dim_p = dim_color(primary, 0.4)
+    dim_p = get_dim_color(primary)
     items = ["1.Toggle ON", "2.Toggle Off", "3.connect to a network"]
     sel = 0
     while True:
@@ -459,7 +466,7 @@ def wifi_menu(primary):
         print(f"{c_fg(dim_p)}status: {status_str}{RST}\n")
         for i, item in enumerate(items):
             if i == sel:
-                print(f"{c_fg(primary)}{BOLD}  → {item}{RST}")
+                print(f"{c_fg(primary)}{BOLD}  • {item}{RST}")
             else:
                 print(f"{c_fg(dim_p)}    {item}{RST}")
         print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Select  1-3: Select  ↑↓: Navigate{RST}")
@@ -504,7 +511,7 @@ def wifi_connect(primary):
         notify("No WiFi networks found")
         return
     sel = 0
-    dim_p = dim_color(primary, 0.4)
+    dim_p = get_dim_color(primary)
     while True:
         clear()
         banner(primary)
@@ -512,7 +519,7 @@ def wifi_connect(primary):
         for i, (ssid, sig, sec) in enumerate(nets):
             label = f"{ssid[:28]:28} {sig:>3}%  {sec}"
             if i == sel:
-                print(f"{c_fg(primary)}{BOLD}  → {i+1}. {label}{RST}")
+                print(f"{c_fg(primary)}{BOLD}  • {i+1}. {label}{RST}")
             else:
                 print(f"{c_fg(dim_p)}    {i+1}. {label}{RST}")
         print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Connect  ↑↓: Navigate{RST}")
@@ -535,7 +542,7 @@ def wifi_connect(primary):
 
 
 def bluetooth_menu(primary):
-    dim_p = dim_color(primary, 0.4)
+    dim_p = get_dim_color(primary)
     items = ["1.Toggle ON", "2.Toggle Off", "3.Connect a device"]
     sel = 0
     while True:
@@ -548,7 +555,7 @@ def bluetooth_menu(primary):
         print(f"{c_fg(dim_p)}Status: {status_str}{RST}\n")
         for i, item in enumerate(items):
             if i == sel:
-                print(f"{c_fg(primary)}{BOLD}  → {item}{RST}")
+                print(f"{c_fg(primary)}{BOLD}  • {item}{RST}")
             else:
                 print(f"{c_fg(dim_p)}    {item}{RST}")
         print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Select  1-3: Select  ↑↓: Navigate{RST}")
@@ -591,7 +598,7 @@ def bt_connect(primary):
         notify("No Bluetooth devices found")
         return
     sel = 0
-    dim_p = dim_color(primary, 0.4)
+    dim_p = get_dim_color(primary)
     while True:
         clear()
         banner(primary)
@@ -599,7 +606,7 @@ def bt_connect(primary):
         for i, (mac, name) in enumerate(devs):
             label = f"{name} ({mac})"
             if i == sel:
-                print(f"{c_fg(primary)}{BOLD}  → {i+1}. {label}{RST}")
+                print(f"{c_fg(primary)}{BOLD}  • {i+1}. {label}{RST}")
             else:
                 print(f"{c_fg(dim_p)}    {i+1}. {label}{RST}")
         print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Connect  ↑↓: Navigate{RST}")
@@ -631,7 +638,7 @@ APPS_FIELDS = [
 
 def default_apps(primary):
     sel = 0
-    dim_p = dim_color(primary, 0.4)
+    dim_p = get_dim_color(primary)
     while True:
         content = readf(PROGRAMS_CONF)
         clear()
@@ -645,7 +652,7 @@ def default_apps(primary):
         for i, (var, label) in enumerate(APPS_FIELDS):
             item_str = f"{i+1}. {label}: {current[var]}"
             if i == sel:
-                print(f"{c_fg(primary)}{BOLD}  → {item_str}{RST}")
+                print(f"{c_fg(primary)}{BOLD}  • {item_str}{RST}")
             else:
                 print(f"{c_fg(dim_p)}    {item_str}{RST}")
         print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Edit  1-3: Select  ↑↓: Navigate{RST}")
@@ -694,7 +701,7 @@ def default_apps(primary):
 # ── Monitor ──
 
 def monitor_menu(primary):
-    dim_p = dim_color(primary, 0.4)
+    dim_p = get_dim_color(primary)
     content = readf(MONITORS_CONF)
     
     mon_name = "eDP-1"
@@ -737,7 +744,7 @@ def monitor_menu(primary):
             mark = " (current)" if opt == current_res else ""
             item_str = f"{i+1}. {opt}{mark}"
             if i == sel:
-                print(f"{c_fg(primary)}{BOLD}  → {item_str}{RST}")
+                print(f"{c_fg(primary)}{BOLD}  • {item_str}{RST}")
             else:
                 print(f"{c_fg(dim_p)}    {item_str}{RST}")
         print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Apply  1-3: Select  ↑↓: Navigate{RST}")
@@ -784,7 +791,7 @@ def monitor_menu(primary):
 def check_update(primary):
     clear()
     banner(primary)
-    dim_p = dim_color(primary, 0.4)
+    dim_p = get_dim_color(primary)
     print(f"\n{c_fg(primary)}{BOLD}Update{RST}")
     print(f"{c_fg(dim_p)}Note: This is not a system update (updates minimal6 dotfiles only).\n{RST}")
     
