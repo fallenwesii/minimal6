@@ -3,6 +3,7 @@
 # Configuration Paths
 WALL_DIR="$HOME/Pictures/wallpapers"
 CACHE_DIR="$HOME/.cache/wallpaper-picker"
+TMP_DIR=""
 
 # Ensure directories exist
 mkdir -p "$WALL_DIR"
@@ -28,6 +29,8 @@ if [ -z "$KITTY_PID" ]; then
   echo "Error: This script must be run inside Kitty terminal." >&2
   exit 1
 fi
+
+TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/wallpaper-picker.XXXXXX")
 
 # Asynchronously generate thumbnails for any new or modified wallpapers
 generate_thumbnails() {
@@ -93,6 +96,7 @@ FILTERED_COUNT=${#FILTERED_WALLPAPERS[@]}
 current_idx=0
 SEARCH_FOCUSED=false
 KEY=""
+LAST_RENDER_SIGNATURE=""
 
 # Helper: Convert hex to RGB (R;G;B)
 hex_to_rgb() {
@@ -105,24 +109,18 @@ hex_to_rgb() {
 
 # Helper: Retrieve colors for a wallpaper (cached or defaults)
 get_wallpaper_colors() {
-  local filename=$(basename "$1")
+  local filename="${1##*/}"
   local color_path="$CACHE_DIR/${filename}.colors"
 
   if [ -f "$color_path" ]; then
     mapfile -t colors <"$color_path"
     if [ ${#colors[@]} -eq 4 ]; then
       primary_color="${colors[0]}"
-      on_primary="${colors[1]}"
-      primary_container="${colors[2]}"
-      on_primary_container="${colors[3]}"
       return
     fi
   fi
 
   primary_color="#ffffff"
-  on_primary="#000000"
-  primary_container="#333333"
-  on_primary_container="#ffffff"
 }
 
 # Layout settings
@@ -211,8 +209,19 @@ update_filter() {
   if [ -z "$QUERY" ]; then
     FILTERED_WALLPAPERS=("${ALL_WALLPAPERS[@]}")
   else
-    # Fuzzy filter using fzf and re-shuffle matching results
-    mapfile -t FILTERED_WALLPAPERS < <(printf "%s\n" "${ALL_WALLPAPERS[@]}" | fzf --filter="$QUERY" 2>/dev/null | shuf)
+    FILTERED_WALLPAPERS=()
+    local query_lc="${QUERY,,}"
+    local file basename_lc path_lc
+
+    for file in "${ALL_WALLPAPERS[@]}"; do
+      basename_lc="${file##*/}"
+      basename_lc="${basename_lc,,}"
+      path_lc="${file,,}"
+
+      if [[ "$basename_lc" == *"$query_lc"* || "$path_lc" == *"$query_lc"* ]]; then
+        FILTERED_WALLPAPERS+=("$file")
+      fi
+    done
   fi
   FILTERED_COUNT=${#FILTERED_WALLPAPERS[@]}
 
@@ -223,6 +232,26 @@ update_filter() {
   elif ((current_idx < 0)); then
     current_idx=0
   fi
+}
+
+visible_signature() {
+  if ((FILTERED_COUNT == 0)); then
+    printf 'empty:%s' "$QUERY"
+    return
+  fi
+
+  local display_n=$((N < FILTERED_COUNT ? N : FILTERED_COUNT))
+  local half_n=$((display_n / 2))
+  local signature="count:${FILTERED_COUNT}:idx:${current_idx}:"
+  local i offset w_idx
+
+  for ((i = 0; i < display_n; i++)); do
+    offset=$((i - half_n))
+    w_idx=$(((current_idx + offset + FILTERED_COUNT) % FILTERED_COUNT))
+    signature+="${FILTERED_WALLPAPERS[w_idx]}|"
+  done
+
+  printf '%s' "$signature"
 }
 
 redraw_screen() {
@@ -239,6 +268,14 @@ redraw_screen() {
     local msg="No matching wallpapers found"
     local msg_col=$(((COLS - ${#msg}) / 2))
     echo -ne "\e[$((LINES / 2));${msg_col}H\e[1;31m$msg\e[0m"
+    LAST_RENDER_SIGNATURE=""
+    draw_search_bar
+    return
+  fi
+
+  local render_signature
+  render_signature=$(visible_signature)
+  if [ "$render_signature" = "$LAST_RENDER_SIGNATURE" ]; then
     draw_search_bar
     return
   fi
@@ -255,7 +292,7 @@ redraw_screen() {
     local slot_col=$((START_COL + (i + (N - display_n) / 2) * (T_WIDTH + SPACING)))
 
     local wall_path="${FILTERED_WALLPAPERS[w_idx]}"
-    local wall_name=$(basename "$wall_path")
+    local wall_name="${wall_path##*/}"
     local thumb_path="$CACHE_DIR/${wall_name}.png"
     local border_thumb_path="$CACHE_DIR/${wall_name}.border.png"
     local preview_file
@@ -279,7 +316,7 @@ redraw_screen() {
     fi
 
     # Render into buffer files in parallel
-    kitty +kitten icat --transfer-mode=file --stdin=no --scale-up --place="${T_WIDTH}x${T_HEIGHT}@${slot_col}x${START_ROW}" "$preview_file" >"/tmp/wall_picker_icat_$i" 2>/dev/null &
+    kitty +kitten icat --transfer-mode=file --stdin=no --scale-up --place="${T_WIDTH}x${T_HEIGHT}@${slot_col}x${START_ROW}" "$preview_file" >"$TMP_DIR/icat_$i" 2>/dev/null &
   done
   wait
 
@@ -289,9 +326,11 @@ redraw_screen() {
 
   # Instantly dump all buffered images sequentially
   for ((i = 0; i < N; i++)); do
-    cat "/tmp/wall_picker_icat_$i" 2>/dev/null
-    rm -f "/tmp/wall_picker_icat_$i"
+    cat "$TMP_DIR/icat_$i" 2>/dev/null
+    rm -f "$TMP_DIR/icat_$i"
   done
+
+  LAST_RENDER_SIGNATURE="$render_signature"
 
   # Draw search bar
   draw_search_bar
@@ -303,6 +342,9 @@ cleanup() {
   tput rmcup
   printf '\e[?7h'
   kitty +kitten icat --clear 2>/dev/null
+  if [ -n "$TMP_DIR" ]; then
+    rm -rf "$TMP_DIR"
+  fi
 
   # Kill parent Kitty window process if set
   if [ -n "$KITTY_PID" ]; then
@@ -312,18 +354,18 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
+# shellcheck disable=SC2329 # Called by the SIGWINCH trap.
 handle_resize() {
   calculate_layout
+  LAST_RENDER_SIGNATURE=""
   redraw_screen
 }
 trap handle_resize SIGWINCH
 
 read_key() {
-  IFS= read -r -s -n1 KEY
-  if [ -z "$KEY" ]; then
-    KEY=""
-    return
-  fi
+  KEY=""
+  IFS= read -r -s -n1 KEY || return 1
+
   if [[ "$KEY" == $'\e' ]]; then
     local next_chars
     read -r -s -n2 -t 0.05 next_chars
@@ -342,20 +384,16 @@ redraw_screen
 
 # Input loop
 while true; do
-  read_key
+  read_key || continue
 
   # Fast-drain stdin if typing normal characters in search mode to prevent dropped inputs
   if [ "$SEARCH_FOCUSED" = true ] && [[ ${#KEY} -eq 1 && "$KEY" =~ [[:print:]] ]]; then
     QUERY+="$KEY"
-    while read -t 0; do
-      local next_char
-      IFS= read -r -s -n1 next_char
-      if [ -z "$next_char" ]; then
-        KEY=""
-        break 2
-      fi
+    while IFS= read -r -s -n1 -t 0.001 next_char; do
       if [[ "$next_char" == $'\x7f' || "$next_char" == $'\b' ]]; then
         QUERY="${QUERY%?}"
+      elif [[ "$next_char" == $'\e' || -z "$next_char" ]]; then
+        break
       elif [[ "$next_char" =~ [[:print:]] ]]; then
         QUERY+="$next_char"
       fi
@@ -445,6 +483,9 @@ tput rmcup
 printf '\e[?7h'
 kitty +kitten icat --clear 2>/dev/null
 clear
+if [ -n "$TMP_DIR" ]; then
+  rm -rf "$TMP_DIR"
+fi
 
 # Apply chosen wallpaper using preserved backend
 FULL_PATH="${FILTERED_WALLPAPERS[current_idx]}"
