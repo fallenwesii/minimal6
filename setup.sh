@@ -390,10 +390,12 @@ if [[ "$setup_themes" == "y" || "$setup_themes" == "Y" ]]; then
 
   # Flatpak theming
   if command -v flatpak &>/dev/null; then
-    echo -e "${YELLOW}Allowing Flatpak apps to access themes and icons...${NC}"
+    echo -e "${YELLOW}Allowing Flatpak apps to access themes, icons, and configurations...${NC}"
     flatpak override --user --filesystem="$HOME"/.themes
     flatpak override --user --filesystem="$HOME"/.icons
-    echo -e "${GREEN}Flatpak apps can now access themes and icons.${NC}"
+    flatpak override --user --filesystem=xdg-config/gtk-4.0:ro
+    flatpak override --user --filesystem=xdg-config/gtk-3.0:ro
+    echo -e "${GREEN}Flatpak apps can now access themes, icons, and configurations.${NC}"
   fi
 
   # Set adw-gtk3 theme via gsettings
