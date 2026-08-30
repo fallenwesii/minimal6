@@ -1,4 +1,7 @@
+//@ pragma IconTheme Papirus-Dark
+
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
@@ -13,10 +16,10 @@ ShellRoot {
     property int cornerRadius: 14
     property color cornerColor: "#05070a"
     property string backlightDevice: "intel_backlight"
-    property string matugenColorsPath: "__HOME__/.config/quickshell/generated/colors.json"
+    property string matugenColorsPath: "/home/wesii/.config/quickshell/generated/colors.json"
     property var matugenColors: ({})
 
-    property string osdIcon: "audio-volume-high-symbolic"
+    property string osdIcon: "volume"
     property string osdLabel: "Volume"
     property real osdValue: Pipewire.defaultAudioSink?.audio.volume ?? 0
     property bool osdMuted: Pipewire.defaultAudioSink?.audio.muted ?? false
@@ -46,17 +49,12 @@ ShellRoot {
     }
 
     function volumeIcon() {
-        if (Pipewire.defaultAudioSink?.audio.muted)
-            return "audio-volume-muted-symbolic";
-
-        const volume = Pipewire.defaultAudioSink?.audio.volume ?? 0;
-        if (volume <= 0.01)
-            return "audio-volume-low-symbolic";
-        if (volume < 0.5)
-            return "audio-volume-medium-symbolic";
-
-        return "audio-volume-high-symbolic";
+        return Pipewire.defaultAudioSink?.audio.muted ? "volume-muted" : "volume";
     }
+
+    // Note: unlike volume, most icon themes (Adwaita included) only ship a
+    // single non-level-specific brightness icon — there's no "-low-"/"-medium-"
+    // variant to switch between, so this is intentionally static.
 
     function screenHasFullscreen(screen) {
         const monitor = Hyprland.monitorFor(screen);
@@ -116,7 +114,7 @@ ShellRoot {
             reload();
             const max = shell.numberFromFile(maxBrightness);
             if (max > 0)
-                shell.showOsd("brightness-high-symbolic", "Brightness", shell.numberFromFile(brightness) / max, false);
+                shell.showOsd("brightness", "Brightness", shell.numberFromFile(brightness) / max, false);
         }
     }
 
@@ -234,7 +232,7 @@ ShellRoot {
 
             Rectangle {
                 anchors.fill: parent
-                radius: 8
+                radius: 18
                 color: shell.md3Color("surface_container_high", "#0b0f14")
                 border.color: shell.md3Color("outline_variant", "#25313a")
                 border.width: 1
@@ -245,10 +243,19 @@ ShellRoot {
                     anchors.rightMargin: 18
                     spacing: 14
 
-                    IconImage {
-                        implicitSize: 28
-                        source: Quickshell.iconPath(shell.osdIcon)
+                    Image {
+                        id: osdIconImage
+                        sourceSize.width: 28
+                        sourceSize.height: 28
+                        source: "icons/" + shell.osdIcon + ".svg"
                         opacity: shell.osdMuted ? 0.55 : 1
+
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            brightness: 1.0
+                            colorization: 1.0
+                            colorizationColor: shell.md3Color("on_surface", "#f2f5f8")
+                        }
                     }
 
                     ColumnLayout {

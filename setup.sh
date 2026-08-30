@@ -35,7 +35,7 @@ PACMAN_PKGS=(
   "pipewire" "wireplumber" "blueman" "bluez" "bluez-utils"
   "kitty" "alacritty" "nautilus" "yazi" "btop"
   "ttf-jetbrains-mono-nerd" "noto-fonts" "qt5-wayland" "qt5ct" "qt6ct"
-  "networkmanager" "base-devel" "xorg-xhost" "quickshell"
+  "networkmanager" "base-devel" "xorg-xhost" "gamemode" "quickshell"
   "neovim" "kvantum" "ghostty" "awww"
   "python3" "python-pyfiglet" "matugen"
 )
@@ -180,7 +180,9 @@ confirm_and_link() {
   fi
 }
 
-# Link config directories
+# Remove bookmarks file/link in target directories to avoid git tracking them
+rm -f "$CONF_DIR/gtk-3.0/bookmarks" "$CONF_DIR/gtk-4.0/bookmarks"
+
 for dir in "$DOTFILES_DIR/config"/*; do
   dir_name=$(basename "$dir")
   if [[ "$dir_name" == "gtk-3.0" ]]; then
@@ -275,22 +277,20 @@ sed_inplace() {
   sed -i "$1" "$2"
 }
 
-# -- quickshell/shell.qml: __HOME__ placeholder for matugenColorsPath --
+# -- quickshell/shell.qml: resolve hardcoded home paths --
 SHELL_QML="$CONF_DIR/quickshell/shell.qml"
-if [ -f "$SHELL_QML" ]; then
-  sed_inplace "s|__HOME__|$HOME|g" "$SHELL_QML"
+REAL_SHELL_QML=$(realpath "$SHELL_QML" 2>/dev/null || echo "")
+if [ -n "$REAL_SHELL_QML" ] && [ -f "$REAL_SHELL_QML" ]; then
+  sed_inplace "s|/home/[^/]*/\.config|/home/wesii/\.config|g" "$REAL_SHELL_QML" # Ensure consistency
+  sed_inplace "s|/home/[^/]*/\.config|$HOME/.config|g" "$REAL_SHELL_QML"
   echo -e "${GREEN}Fixed paths in quickshell/shell.qml${NC}"
-elif [ -L "$SHELL_QML" ]; then
-  sed_inplace "s|__HOME__|$HOME|g" "$DOTFILES_DIR/config/quickshell/shell.qml"
-  echo -e "${GREEN}Fixed paths in quickshell/shell.qml (via dotfiles symlink)${NC}"
 fi
 
-# -- hypr/colors.conf: $image path (matugen writes this, but seed it correctly) --
+# -- hypr/colors.conf: resolve hardcoded wallpaper image path --
 COLORS_CONF="$CONF_DIR/hypr/colors.conf"
-if [ -f "$COLORS_CONF" ] || [ -L "$COLORS_CONF" ]; then
-  # Resolve the real file (follow symlink to dotfiles)
-  REAL_COLORS=$(realpath "$COLORS_CONF" 2>/dev/null || echo "$COLORS_CONF")
-  sed_inplace "s|~/Pictures|$HOME/Pictures|g" "$REAL_COLORS"
+REAL_COLORS=$(realpath "$COLORS_CONF" 2>/dev/null || echo "")
+if [ -n "$REAL_COLORS" ] && [ -f "$REAL_COLORS" ]; then
+  sed_inplace "s|/home/[^/]*/Pictures|$HOME/Pictures|g" "$REAL_COLORS"
   echo -e "${GREEN}Fixed \$image path in hypr/colors.conf${NC}"
 fi
 
@@ -331,15 +331,22 @@ echo -e "${GREEN}Hardcoded path resolution complete.${NC}"
 
 # -- wofi/style.css: @import needs absolute path from root --
 WOI_CSS="$CONF_DIR/wofi/style.css"
-ABS_PATH="$HOME/.config/wofi/colors.css"
+REAL_WOI_CSS=$(realpath "$WOI_CSS" 2>/dev/null || echo "")
+if [ -n "$REAL_WOI_CSS" ] && [ -f "$REAL_WOI_CSS" ]; then
+  sed_inplace "s|/home/wesii/\.config/wofi/colors\.css|$HOME/.config/wofi/colors.css|g" "$REAL_WOI_CSS"
+  # Also handle fallback replacement if it was imported relative/without home originally
+  sed_inplace "s|@import \"colors\.css\";|@import \"$HOME/.config/wofi/colors.css\";|g" "$REAL_WOI_CSS"
+  echo -e "${GREEN}Fixed @import path in wofi/style.css to $HOME/.config/wofi/colors.css${NC}"
+fi
 
-if [ -f "$WOI_CSS" ]; then
-  sed_inplace "s|@import \"colors.css\";|@import \"$ABS_PATH\";|g" "$WOI_CSS"
-  echo -e "${GREEN}Fixed @import path in wofi/style.css to $ABS_PATH${NC}"
-elif [ -L "$WOI_CSS" ]; then
-  # It's a symlink: operate on the real file in dotfiles dir
-  sed_inplace "s|@import \"colors.css\";|@import \"$ABS_PATH\";|g" "$DOTFILES_DIR/config/wofi/style.css"
-  echo -e "${GREEN}Fixed @import path in wofi/style.css (via dotfiles symlink)${NC}"
+# -- wlogout/style.css: icon paths are absolute and must point to this user's home --
+# Follows the symlink to the real dotfiles file and replaces any /home/wesii/.config/wlogout/
+# with the current user's path. Safe to re-run (already-correct paths are left unchanged).
+WLOGOUT_CSS="$CONF_DIR/wlogout/style.css"
+REAL_WLOGOUT_CSS=$(realpath "$WLOGOUT_CSS" 2>/dev/null || echo "")
+if [ -n "$REAL_WLOGOUT_CSS" ] && [ -f "$REAL_WLOGOUT_CSS" ]; then
+  sed_inplace "s|file:///home/wesii/\.config/wlogout/|file://$HOME/.config/wlogout/|g" "$REAL_WLOGOUT_CSS"
+  echo -e "${GREEN}Fixed wlogout icon paths in style.css to use $HOME/.config/wlogout/${NC}"
 fi
 
 # --- 9. Wallpapers ---
@@ -383,7 +390,28 @@ for pkg in "${HYPR_PKGS[@]}"; do
   fi
 done
 
-# --- 11. Setting up themes ---
+# --- 11. Configure Tuned service and passwordless execution ---
+echo -e "${YELLOW}Configuring Tuned and passwordless tuned-adm profile switching...${NC}"
+# Enable and start tuned service
+if systemctl is-active --quiet tuned; then
+  echo -e "${GREEN}Tuned service is already running.${NC}"
+else
+  echo -e "${BLUE}Starting and enabling tuned service...${NC}"
+  sudo systemctl enable --now tuned
+fi
+
+# Create sudoers rule for passwordless tuned-adm profile switching
+TUNED_SUDOERS_FILE="/etc/sudoers.d/99-tuned-adm"
+if [ ! -f "$TUNED_SUDOERS_FILE" ]; then
+  echo -e "${BLUE}Creating sudoers rule to allow running tuned-adm without a password...${NC}"
+  echo "%wheel ALL=(ALL:ALL) NOPASSWD: /usr/bin/tuned-adm" | sudo tee "$TUNED_SUDOERS_FILE" > /dev/null
+  sudo chmod 440 "$TUNED_SUDOERS_FILE"
+  echo -e "${GREEN}Sudoers rule created successfully.${NC}"
+else
+  echo -e "${GREEN}Sudoers rule for tuned-adm already exists.${NC}"
+fi
+
+# --- 12. Setting up themes ---
 echo -e "${YELLOW}Setting up themes...${NC}"
 read -p "Apply adw-gtk3 theme and generate dynamic colors with matugen? (y/n): " setup_themes
 if [[ "$setup_themes" == "y" || "$setup_themes" == "Y" ]]; then

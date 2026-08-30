@@ -4,26 +4,28 @@ window {
   font-family: JetBrainsMono Nerd Font;
   font-size: 14pt;
   color: @outline;
-  /* Mixes your wallpaper background color with 90% opacity */
-  background-color: alpha(@background, 0.90); 
+  background-color: alpha(@background, 0.99); 
 }
 
 button {
   background-repeat: no-repeat;
   background-position: center;
   background-size: 100px;
-  border: 2px solid @background ;
+  border: 2px solid @background;
   border-radius: 0px;
-  background-color: @background ;
+  background-color: @background;
   margin: 2.5px;
-  color: @on_background; 
+  color: @on_background;
+  transition: all 0.2s ease;
 }
 
 button:hover {
-  border: 2px solid @background;
-  border-radius: 0px;
-  background-color: @primary;
-  color: @on_background;
+  border: 3px solid @primary;
+  border-radius: 8px;
+  background-color: alpha(@primary, 0.20);
+  background-size: 110px;
+  color: @on_primary_container;
+  box-shadow: 0 0 20px 6px @primary;
 }
 
 button:active {
@@ -41,31 +43,37 @@ button:focus {
 }
 
 #lock {
-  background-image: image(url("./lock.png"));
+  background-image: image(url("file:///home/wesii/.config/wlogout/lock.png"));
+  background-size: 100px;
   border: 2px solid #171717;
 }
 
 #logout {
-  background-image: image(url("./logout.png"));
+  background-image: image(url("file:///home/wesii/.config/wlogout/logout.png"));
+  background-size: 100px;
   border: 2px solid #171717;
 }
 
 #suspend {
-  background-image: image(url("./sleep.png"));
+  background-image: image(url("file:///home/wesii/.config/wlogout/sleep.png"));
+  background-size: 100px;
   border: 2px solid #171717;
 }
 
 #shutdown {
-  background-image: image(url("./power.png"));
+  background-image: image(url("file:///home/wesii/.config/wlogout/power.png"));
+  background-size: 100px;
   border: 2px solid #171717;
 }
 
 #reboot {
-  background-image: image(url("./restart.png"));
+  background-image: image(url("file:///home/wesii/.config/wlogout/restart.png"));
+  background-size: 100px;
   border: 2px solid #171717;
 }
 
 #hibernate {
-  background-image: image(url("./restart.png"));
+  background-image: image(url("file:///home/wesii/.config/wlogout/restart.png"));
+  background-size: 100px;
   border: 2px solid #171717;
 }

@@ -72,7 +72,7 @@ post_hook = 'pkill -SIGUSR1 kitty || true'
 [templates.nvim]
 input_path = '~/.config/matugen/templates/nvim.vim'
 output_path = '~/.config/nvim/colors/matugen.vim'
-post_hook = 'pkill -SIGUSR1 nvim || true'
+post_hook = 'true'
 
 [templates.vscodium]
 input_path = '~/.config/matugen/templates/vscodium.json'

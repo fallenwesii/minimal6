@@ -4,3 +4,5 @@
 --
 vim.opt.relativenumber = false -- Disables relative line numbers
 vim.opt.number = true -- Ensures standard line numbers are ON
+
+

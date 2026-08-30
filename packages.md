@@ -39,6 +39,8 @@ A comprehensive list of packages required for the **minimal6** environment.
 - **psmisc**: Utilities that use the proc filesystem (provides `killall`).
 - **procps-ng**: Utilities for browsing procfs (provides `pgrep`, `pkill`).
 - **iproute2**: Networking and traffic control engine (provides `ip`).
+- **xorg-xhost**: Server access control program for X.
+- **gamemode**: A daemon/lib combo that allows games to request a set of optimisations be temporarily applied to the host OS.
 
 ### Audio & Bluetooth
 - **pipewire**: Low-latency audio/video router and processor.

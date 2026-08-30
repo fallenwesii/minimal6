@@ -33,7 +33,7 @@ def get_hypr_color(name, fallback):
 
 
 def get_dim_color(primary):
-    return get_hypr_color("outline_variant", dim_color(primary, 0.4))
+    return get_hypr_color("scrim", dim_color(primary, 0.4))
 
 
 def hex_to_rgb(h):
@@ -273,9 +273,9 @@ def wallpaper_ui(primary):
         elif key == 'ENTER':
             full_path = os.path.abspath(os.path.join(WALLPAPERS_DIR, wps[sel]))
             notify("Generating colors with Matugen...")
-            run(["matugen", "-m", "dark", "image", full_path, "--source-color-index", "0"])
-            run(["awww", "img", full_path, "--transition-type", "none"])
-            run(["hyprctl", "reload"])
+            run(["matugen", "-m", "dark", "image", full_path, "--source-color-index", "0", "--lightness-dark", "0.08", "--contrast", "0"])
+            writef(os.path.join(HOME, ".cache", "matugen_mode"), "dark\n")
+            subprocess.Popen(["sh", "-c", "hyprctl reload"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             primary = get_primary_color()
             notify(f"Wallpaper updated: {wps[sel]}")
             return primary
@@ -430,13 +430,38 @@ def toggle_caffeine(primary):
 
 
 def toggle_gamemode(primary):
-    def status(): return not hyprctl_bool("animations:enabled")
+    pid_file = os.path.join(HOME, ".cache", "gamemode.pid")
+
+    def status():
+        return "gamemode is active" in run_out(["gamemoded", "-s"])
+
     def on():
         run(["hyprctl", "keyword", "animations:enabled", "false"])
         run(["hyprctl", "keyword", "decoration:blur:enabled", "false"])
         run(["hyprctl", "keyword", "decoration:shadow:enabled", "false"])
+        if not status():
+            proc = subprocess.Popen(
+                ["gamemoded", "-r"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True
+            )
+            writef(pid_file, str(proc.pid))
+
     def off():
         run(["hyprctl", "reload"])
+        if os.path.exists(pid_file):
+            try:
+                pid = int(readf(pid_file).strip())
+                run(["kill", "-9", str(pid)])
+            except Exception:
+                pass
+            try:
+                os.remove(pid_file)
+            except Exception:
+                pass
+        run(["pkill", "-9", "-f", "gamemoded -r"])
+
     toggle_ui(primary, "Gamemode", status, on, off)
 
 
@@ -829,6 +854,70 @@ def check_update(primary):
     read_line(f"\n{c_fg(dim_p)}Press Enter to return…{RST}")
 
 
+def theme_menu(primary):
+    state_file = os.path.join(HOME, ".cache", "matugen_mode")
+    script_path = os.path.join(HYPR_DIR, "scripts", "light-mode.sh")
+
+    def get_mode():
+        if os.path.exists(state_file):
+            try:
+                with open(state_file) as f:
+                    return f.read().strip()
+            except Exception:
+                pass
+        return "dark"
+
+    dim_p = get_dim_color(primary)
+    items = ["1.Light Mode", "2.Dark Mode"]
+    
+    current_mode = get_mode()
+    sel = 0 if current_mode == "light" else 1
+
+    while True:
+        current_mode = get_mode()
+        clear()
+        banner(primary)
+        print(f"\n{c_fg(primary)}{BOLD}Theme Mode{RST}")
+        print(f"{c_fg(dim_p)}Current Mode: {current_mode}{RST}\n")
+        
+        for i, item in enumerate(items):
+            if i == sel:
+                print(f"{c_fg(primary)}{BOLD}  • {item}{RST}")
+            else:
+                print(f"{c_fg(dim_p)}    {item}{RST}")
+                
+        print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Select  1-2: Select  ↑↓: Navigate{RST}")
+        key = get_key()
+        
+        if key == 'UP':
+            sel = (sel - 1) % 2
+        elif key == 'DOWN':
+            sel = (sel + 1) % 2
+        elif key == 'ENTER':
+            target_mode = "light" if sel == 0 else "dark"
+            if current_mode != target_mode:
+                run(["bash", script_path])
+                primary = get_primary_color()
+            else:
+                notify(f"Already in {target_mode} mode")
+        elif key == '1':
+            sel = 0
+            if current_mode != "light":
+                run(["bash", script_path])
+                primary = get_primary_color()
+            else:
+                notify("Already in light mode")
+        elif key == '2':
+            sel = 1
+            if current_mode != "dark":
+                run(["bash", script_path])
+                primary = get_primary_color()
+            else:
+                notify("Already in dark mode")
+        elif key == 'ESC':
+            return primary
+
+
 # ── Sub-menus ──
 
 def appearance_menu(primary):
@@ -838,6 +927,7 @@ def appearance_menu(primary):
         "3.Gaps in",
         "4.Gaps out",
         "5.Border size",
+        "6.Theme",
     ]
     while True:
         ch = show_menu("Appearance", items, primary)
@@ -847,6 +937,8 @@ def appearance_menu(primary):
         elif ch == "3": simple_picker(primary, "Gaps in", "gaps_in", 1, 9)
         elif ch == "4": simple_picker(primary, "Gaps out", "gaps_out", 1, 9)
         elif ch == "5": simple_picker(primary, "Border size", "border_size", 0, 6)
+        elif ch == "6": primary = theme_menu(primary)
+
 
 
 def toggles_menu(primary):
