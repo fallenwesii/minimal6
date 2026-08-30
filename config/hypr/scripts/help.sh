@@ -35,6 +35,7 @@ declare -A KEYBINDS=(
   ["SUPER + CTRL + C     │ Edit Hyprland Config (ghostty)"]="hyprctl dispatch exec \"ghostty -e bash -c 'cd ~/.config/hypr/ && nvim ~/.config/hypr/hyprland.conf'\""
   ["SUPER + CTRL + R     │ Reload Hyprland Config"]="hyprctl reload"
   ["SUPER + CTRL + G     │ Toggle Grayscale Mode"]="hyprctl dispatch exec ~/.config/hypr/scripts/toggle-grayscale.sh"
+  ["SUPER + CTRL + L     │ Toggle Light Mode"]="hyprctl dispatch exec ~/.config/hypr/scripts/light-mode.sh"
   ["SUPER + CTRL + W     │ Wallpaper Switcher"]="hyprctl dispatch exec \"kitty --class wallpaper-picker -e ~/.config/hypr/scripts/wallpaper-switcher.sh\""
   ["SUPER + O            │ Centered Floating Window"]="hyprctl dispatch exec ~/.config/hypr/scripts/centered-floating-window.sh"
   ["SUPER + ALT + E      │ File Manager (yazi terminal)"]="hyprctl dispatch exec \"kitty --class yazi -e yazi\""
@@ -45,14 +46,12 @@ declare -A KEYBINDS=(
   ["SUPER + N            │ Notification History (fzf)"]="hyprctl dispatch exec \"kitty --class notifications -e ~/.config/hypr/scripts/notifications.sh\""
   ["SUPER + H            │ Toggle Help Menu Screen"]="hyprctl dispatch exec \"kitty --class hypr_help -e ~/.config/hypr/scripts/help.sh\""
   ["SUPER + I            │ Launch Sublime Text"]="hyprctl dispatch exec subl --launch-or-new-window"
-  ["SUPER + Arrows       │ Move Focus Between Windows"]="echo 'Use SUPER + arrow keys to move focus'"
   ["Print                │ Screenshot Region (Save File)"]="hyprctl dispatch exec \"grim -g \\\"\$(slurp)\\\" ~/Pictures/Screenshots/\$(date +'%Y-%m-%d_%H-%M-%S').png\""
   ["SUPER + SHIFT + S    │ Screenshot Region (To Clipboard)"]="hyprctl dispatch exec \"grim -g \\\"\$(slurp)\\\" - | wl-copy\""
   ["SUPER + ALT + S      │ Fullscreen Screenshot (Save File)"]="hyprctl dispatch exec \"grim ~/Pictures/Screenshots/\$(date +'%Y-%m-%d_%H-%M-%S').png\""
   ["SUPER + SHIFT +CTRL+B│ Toggle Compact Mode Layout"]="hyprctl dispatch exec ~/.config/hypr/scripts/toggle-compact.sh"
   ["SUPER + Z            │ Jump Directly to 1.4x Screen Zoom"]="hyprctl keyword cursor:zoom_factor 1.4"
   ["SUPER + SHIFT + Z    │ Reset Screen Zoom Factor to 1.0"]="hyprctl keyword cursor:zoom_factor 1.0"
-  ["SUPER + Scroll Wheel │ Cycle Active Workspaces Dynamically"]="echo 'Scroll mouse wheel while holding SUPER to shift workspaces'"
 )
 
 # Parse a color variable from colors.conf, returning a #RRGGBB hex string
