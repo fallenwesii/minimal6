@@ -233,7 +233,7 @@ ShellRoot {
             Rectangle {
                 anchors.fill: parent
                 radius: 18
-                color: shell.md3Color("surface_container_high", "#0b0f14")
+                color: shell.md3Color("background", "#0b0f14")
                 border.color: shell.md3Color("outline_variant", "#25313a")
                 border.width: 1
 
