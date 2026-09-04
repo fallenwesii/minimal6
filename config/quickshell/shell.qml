@@ -13,7 +13,7 @@ import Quickshell.Widgets
 ShellRoot {
     id: shell
 
-    property int cornerRadius: 14
+    property int cornerRadius: 15
     property color cornerColor: "#05070a"
     property string backlightDevice: "intel_backlight"
     property string matugenColorsPath: "/home/wesii/.config/quickshell/generated/colors.json"
@@ -232,7 +232,7 @@ ShellRoot {
 
             Rectangle {
                 anchors.fill: parent
-                radius: 18
+                radius: 19
                 color: shell.md3Color("background", "#0b0f14")
                 border.color: shell.md3Color("outline_variant", "#25313a")
                 border.width: 1

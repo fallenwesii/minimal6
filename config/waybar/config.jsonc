@@ -141,8 +141,8 @@
     "interval": 5,
     "tooltip": true,
     "tooltip-format": "Left-Click: Powersave\nRight-Click: Balanced",
-    "on-click": "sudo tuned-adm profile powersave && pkill -SIGUSR2 waybar && kitty notify-send 'Powersaving mode'",
-    "on-click-right": "sudo tuned-adm profile balanced && pkill -SIGUSR2 waybar"
+    "on-click": "sudo tuned-adm profile powersave && notify-send 'Powersaving mode' && pkill -SIGUSR2 waybar",
+    "on-click-right": "sudo tuned-adm profile balanced && notify-send 'Balanced mode' && pkill -SIGUSR2 waybar"
   },
   "custom/network_speed": {
     "exec": "~/.local/bin/net-speed.sh",
