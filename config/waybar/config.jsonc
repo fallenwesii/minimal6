@@ -11,7 +11,7 @@
     "hyprland/window"
   ],
   "modules-right": [
-    "custom/network_speed",
+    "network#speed",
     "custom/tuned",
     "memory",
     "cpu",
@@ -114,6 +114,18 @@
     "interval": 2,
     "on-click": "kitty -e nmtui"
   },
+  "network#speed": {
+    "format": "󰁞󰁆 {bandwidthTotalBytes} ",
+    "format-wifi": "󰁞󰁆 {bandwidthTotalBytes} ",
+    "format-ethernet": "󰁞󰁆 {bandwidthTotalBytes} ",
+    "format-disconnected": "󰁞󰁆 0 B/s ",
+    "tooltip": true,
+    "tooltip-format": "󰁆 {bandwidthDownBytes}   󰁞 {bandwidthUpBytes}",
+    "tooltip-format-wifi": "󰁆 {bandwidthDownBytes}   󰁞 {bandwidthUpBytes}",
+    "tooltip-format-ethernet": "󰁆 {bandwidthDownBytes}   󰁞 {bandwidthUpBytes}",
+    "tooltip-format-disconnected": "󰁆 0 B/s   󰁞 0 B/s",
+    "interval": 2
+  },
   "battery": {
     "format": "{capacity}% {icon} ",
     "format-charging": "{capacity}% {icon}  ",
@@ -143,11 +155,5 @@
     "tooltip-format": "Left-Click: Powersave\nRight-Click: Balanced",
     "on-click": "sudo tuned-adm profile powersave && notify-send 'Powersaving mode' && pkill -SIGUSR2 waybar",
     "on-click-right": "sudo tuned-adm profile balanced && notify-send 'Balanced mode' && pkill -SIGUSR2 waybar"
-  },
-  "custom/network_speed": {
-    "exec": "~/.local/bin/net-speed.sh",
-    "format": "{}",
-    "interval": 2,
-    "tooltip": false
   }
 }
