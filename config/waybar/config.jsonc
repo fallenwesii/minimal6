@@ -17,6 +17,7 @@
     "cpu",
     "pulseaudio",
     "battery",
+    "custom/battery-watcher",
     "custom/nightmode",
     "custom/bluetooth",
     "network",
@@ -127,6 +128,11 @@
     "interval": 2
   },
   "battery": {
+    "states": {
+      "warning": 20,
+      "critical": 9
+    },
+    "interval": 30,
     "format": "{capacity}% {icon} ",
     "format-charging": "{capacity}% {icon}  ",
     "format-plugged": "{capacity}% {icon}  ",
@@ -141,6 +147,11 @@
       "",
       ""
     ]
+  },
+  "custom/battery-watcher": {
+    "exec": "bash -lc '~/.config/waybar/scripts/battery-watcher.sh'",
+    "interval": 30,
+    "tooltip": false
   },
   "custom/powermenu": {
     "format": " ",

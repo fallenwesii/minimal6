@@ -69,6 +69,18 @@
   color: @primary; 
 }
 
+#battery.warning,
+#battery.critical,
+#battery.warning:hover,
+#battery.critical:hover {
+  color: @on_error;
+}
+
+#custom-battery-watcher {
+  padding: 0;
+  margin: 0;
+}
+
 
 /* --- Waybar Modules Spacing & Breathing Room --- */
 
