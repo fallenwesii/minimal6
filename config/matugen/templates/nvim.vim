@@ -45,26 +45,26 @@ let g:terminal_color_14 = "{{ colors.outline_variant.default.hex }}"
 let g:terminal_color_15 = "{{ colors.on_surface.default.hex }}"
 
 " ── Base UI ─────────────────────────────────────────────────────────────────
-hi Normal        guibg=NONE guifg={{ colors.on_surface.dark.hex }}
-hi NormalNC      guibg=NONE guifg={{ colors.on_surface_variant.dark.hex }}
-hi NormalFloat   guibg=NONE guifg={{ colors.on_surface.dark.hex }}
-hi FloatBorder   guibg=NONE guifg={{ colors.outline.dark.hex }}
-hi FloatTitle    guibg=NONE guifg={{ colors.primary.dark.hex }} gui=bold
-hi SignColumn    guibg=NONE guifg={{ colors.outline.dark.hex }}
-hi EndOfBuffer   guibg=NONE guifg={{ colors.surface_variant.dark.hex }}
-hi VertSplit     guibg=NONE guifg={{ colors.outline_variant.dark.hex }}
-hi WinSeparator  guibg=NONE guifg={{ colors.outline_variant.dark.hex }}
+hi Normal        guibg={{ colors.surface.dark.hex }} guifg={{ colors.on_surface.dark.hex }}
+hi NormalNC      guibg={{ colors.surface_dim.dark.hex }} guifg={{ colors.on_surface_variant.dark.hex }}
+hi NormalFloat   guibg={{ colors.surface_container.dark.hex }} guifg={{ colors.on_surface.dark.hex }}
+hi FloatBorder   guibg={{ colors.surface_container.dark.hex }} guifg={{ colors.outline.dark.hex }}
+hi FloatTitle    guibg={{ colors.surface_container.dark.hex }} guifg={{ colors.primary.dark.hex }} gui=bold
+hi SignColumn    guibg={{ colors.surface.dark.hex }} guifg={{ colors.outline.dark.hex }}
+hi EndOfBuffer   guibg={{ colors.surface.dark.hex }} guifg={{ colors.surface_variant.dark.hex }}
+hi VertSplit     guibg={{ colors.surface.dark.hex }} guifg={{ colors.outline_variant.dark.hex }}
+hi WinSeparator  guibg={{ colors.surface.dark.hex }} guifg={{ colors.outline_variant.dark.hex }}
 
 " ── Status & Tab lines ──────────────────────────────────────────────────────
 hi StatusLine    guibg={{ colors.primary.dark.hex }} guifg={{ colors.on_primary.dark.hex }}
 hi StatusLineNC  guibg={{ colors.primary_container.dark.hex }} guifg={{ colors.on_primary_container.dark.hex }}
-hi TabLine       guibg=NONE guifg={{ colors.on_surface_variant.dark.hex }}
-hi TabLineFill   guibg=NONE guifg={{ colors.outline.dark.hex }}
+hi TabLine       guibg={{ colors.surface_container.dark.hex }} guifg={{ colors.on_surface_variant.dark.hex }}
+hi TabLineFill   guibg={{ colors.surface_dim.dark.hex }} guifg={{ colors.outline.dark.hex }}
 hi TabLineSel    guibg={{ colors.primary_container.dark.hex }} guifg={{ colors.on_primary_container.dark.hex }} gui=bold
 
 " ── Line numbers & cursor ────────────────────────────────────────────────────
-hi LineNr        guibg=NONE guifg={{ colors.outline.dark.hex }}
-hi CursorLineNr  guibg=NONE guifg={{ colors.primary.dark.hex }} gui=bold
+hi LineNr        guibg={{ colors.surface.dark.hex }} guifg={{ colors.outline.dark.hex }}
+hi CursorLineNr  guibg={{ colors.surface.dark.hex }} guifg={{ colors.primary.dark.hex }} gui=bold
 hi CursorLine    guibg={{ colors.surface_container_high.dark.hex }} guifg=NONE
 hi CursorColumn  guibg={{ colors.surface_container_high.dark.hex }} guifg=NONE
 hi ColorColumn   guibg={{ colors.surface_container_highest.dark.hex }} guifg=NONE
@@ -72,8 +72,8 @@ hi Cursor        guibg={{ colors.primary.dark.hex }} guifg={{ colors.on_primary.
 hi lCursor       guibg={{ colors.secondary.dark.hex }} guifg={{ colors.on_secondary.dark.hex }}
 
 " ── Folds ───────────────────────────────────────────────────────────────────
-hi FoldColumn    guibg=NONE guifg={{ colors.outline.dark.hex }}
-hi Folded        guibg=NONE guifg={{ colors.outline_variant.dark.hex }} gui=italic
+hi FoldColumn    guibg={{ colors.surface.dark.hex }} guifg={{ colors.outline.dark.hex }}
+hi Folded        guibg={{ colors.surface_container.dark.hex }} guifg={{ colors.outline_variant.dark.hex }} gui=italic
 
 " ── Search & Selection ──────────────────────────────────────────────────────
 hi Search        guibg={{ colors.tertiary_container.dark.hex }} guifg={{ colors.on_tertiary_container.dark.hex }}
