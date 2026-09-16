@@ -32,8 +32,8 @@ def get_hypr_color(name, fallback):
     return fallback
 
 
-def get_dim_color(primary):
-    return get_hypr_color("scrim", dim_color(primary, 0.4))
+def get_dim_color(primary ):
+    return get_hypr_color("primary", dim_color(primary , 0.4))
 
 
 def hex_to_rgb(h):
