@@ -811,48 +811,6 @@ def monitor_menu(primary):
             return
 
 
-# ── Update ──
-
-def check_update(primary):
-    clear()
-    banner(primary)
-    dim_p = get_dim_color(primary)
-    print(f"\n{c_fg(primary)}{BOLD}Update{RST}")
-    print(f"{c_fg(dim_p)}Note: This is not a system update (updates minimal6 dotfiles only).\n{RST}")
-    
-    if not os.path.exists(os.path.join(MINIMAL6_DIR, ".git")):
-        print(f"{c_fg(primary)}Git repository not found at {MINIMAL6_DIR}{RST}")
-        read_line(f"\n{c_fg(dim_p)}Press Enter to return…{RST}")
-        return
-
-    notify("Checking for dotfiles updates...")
-    run_out(["git", "-C", MINIMAL6_DIR, "fetch", "origin"])
-    
-    branch = run_out(["git", "-C", MINIMAL6_DIR, "rev-parse", "--abbrev-ref", "HEAD"]) or "dev"
-    ahead = run_out(["git", "-C", MINIMAL6_DIR, "rev-list", "--count", f"HEAD..origin/{branch}"])
-    
-    if ahead and ahead.isdigit() and int(ahead) > 0:
-        log = run_out(["git", "-C", MINIMAL6_DIR, "log", f"HEAD..origin/{branch}", "--oneline"])
-        print(f"{c_fg(primary)}{ahead} update(s) available from origin/{branch}:\n{RST}")
-        for line in log.splitlines():
-            print(f"{c_fg(dim_p)}  - {line}{RST}")
-        print()
-        ans = read_line(f"{c_fg(primary)}Pull updates and update symlinks? (y/N): {RST}").lower()
-        if ans == 'y':
-            run_out(["git", "-C", MINIMAL6_DIR, "pull", "origin", branch])
-            setup_script = os.path.join(MINIMAL6_DIR, "setup.sh")
-            if os.path.exists(setup_script):
-                run(["bash", setup_script])
-            notify("minimal6 dotfiles updated & symlinks refreshed!")
-            print(f"\n{c_fg(primary)}Successfully updated!{RST}")
-        else:
-            notify("Update skipped")
-    else:
-        print(f"{c_fg(primary)}minimal6 dotfiles are already up to date.{RST}")
-        notify("minimal6 is up to date")
-    
-    read_line(f"\n{c_fg(dim_p)}Press Enter to return…{RST}")
-
 
 def theme_menu(primary):
     state_file = os.path.join(HOME, ".cache", "matugen_mode")
@@ -986,7 +944,6 @@ def main():
             "4": connectivity_menu,
             "5": default_apps,
             "6": monitor_menu,
-            "7": check_update,
         }
         while True:
             ch = show_menu("Main Menu", [
@@ -996,7 +953,6 @@ def main():
                 "4.Connectivity",
                 "5.Default apps",
                 "6.Monitor",
-                "7.Update",
             ], primary, back=False, default_sel=0)
             if ch == "0":
                 clear()
