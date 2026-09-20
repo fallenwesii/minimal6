@@ -4,7 +4,7 @@ window {
   font-family: JetBrainsMono Nerd Font;
   font-size: 14pt;
   color: @outline;
-  background-color: alpha(@background, 0.99); 
+  background-color: alpha(@background, 0.95); 
 }
 
 button {

@@ -2,9 +2,7 @@
 set -euo pipefail
 
 # Battery Watcher for Waybar
-# Triggers low battery notifications when discharging
-
-STATE_FILE="/battery_watcher_state"
+STATE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/battery_watcher_state"
 
 get_battery_info() {
   local bat_dir=""
@@ -45,24 +43,24 @@ if [[ -f "$STATE_FILE" ]]; then
 fi
 
 if [[ "$stat" == "Discharging" ]]; then
-  if (( cap <= 5 )); then
+  if ((cap <= 5)); then
     if [[ "$last_state" -ne 2 ]]; then
       notify_user "battery too low, charging recomended" "critical"
-      echo 2 > "$STATE_FILE"
+      echo 2 >"$STATE_FILE"
     fi
-  elif (( cap <= 14 )); then
+  elif ((cap <= 14)); then
     if [[ "$last_state" -ne 1 && "$last_state" -ne 2 ]]; then
       notify_user "battery low" "normal"
-      echo 1 > "$STATE_FILE"
+      echo 1 >"$STATE_FILE"
     fi
   else
     if [[ "$last_state" -ne 0 ]]; then
-      echo 0 > "$STATE_FILE"
+      echo 0 >"$STATE_FILE"
     fi
   fi
 else
   # Charging or Full: reset notification state
   if [[ "$last_state" -ne 0 ]]; then
-    echo 0 > "$STATE_FILE"
+    echo 0 >"$STATE_FILE"
   fi
 fi

@@ -288,16 +288,26 @@ def wallpaper_ui(primary):
 def simple_picker(primary, title, cfg_key, lo, hi):
     vals = list(range(lo, hi + 1))
     sel = 0
+    view_size = 9
     dim_p = get_dim_color(primary)
     while True:
         clear()
         banner(primary)
-        print(f"\n{c_fg(primary)}{BOLD}{title}{RST}\n")
-        for i, v in enumerate(vals):
+        print(f"\n{c_fg(primary)}{BOLD}{title} (Total: {len(vals)}){RST}\n")
+
+        if len(vals) <= view_size:
+            view_start = 0
+        else:
+            view_start = max(0, min(sel - view_size // 2, len(vals) - view_size))
+        view_end = min(len(vals), view_start + view_size)
+
+        for i in range(view_start, view_end):
+            v = vals[i]
             if i == sel:
                 print(f"{c_fg(primary)}{BOLD}  • {v}{RST}")
             else:
                 print(f"{c_fg(dim_p)}    {v}{RST}")
+
         print(f"\n  {c_fg(dim_p)}ESC: Back  ENTER: Select  ↑↓: Navigate{RST}")
         key = get_key()
         if key == 'UP':
@@ -309,10 +319,6 @@ def simple_picker(primary, title, cfg_key, lo, hi):
             notify(f"{title} set to {vals[sel]}")
             return
         elif key == 'ESC':
-            return
-        elif key.isdigit() and lo <= int(key) <= hi:
-            update_appearance(cfg_key, key)
-            notify(f"{title} set to {key}")
             return
 
 
@@ -365,51 +371,6 @@ def toggle_ui(primary, name, get_status, set_on, set_off):
 
 
 # ── Toggle implementations ──
-
-def toggle_animations(primary):
-    def status(): return hyprctl_bool("animations:enabled")
-    def on():
-        run(["hyprctl", "keyword", "animations:enabled", "true"])
-        content = readf(APPEARANCE_CONF)
-        if re.search(r'animations\s*\{', content):
-            content = re.sub(
-                r'(animations\s*\{[^}]*?enabled\s*=\s*)\w+',
-                r'\g<1>true', content, flags=re.DOTALL)
-        else:
-            content += "\nanimations {\n  enabled = true\n}\n"
-        writef(APPEARANCE_CONF, content)
-    def off():
-        run(["hyprctl", "keyword", "animations:enabled", "false"])
-        content = readf(APPEARANCE_CONF)
-        if re.search(r'animations\s*\{', content):
-            content = re.sub(
-                r'(animations\s*\{[^}]*?enabled\s*=\s*)\w+',
-                r'\g<1>false', content, flags=re.DOTALL)
-        else:
-            content += "\nanimations {\n  enabled = false\n}\n"
-        writef(APPEARANCE_CONF, content)
-    toggle_ui(primary, "Animations", status, on, off)
-
-
-def toggle_blur(primary):
-    def status(): return hyprctl_bool("decoration:blur:enabled")
-    def on():
-        run(["hyprctl", "keyword", "decoration:blur:enabled", "true"])
-        content = readf(APPEARANCE_CONF)
-        content = re.sub(
-            r'(blur\s*\{[^}]*?enabled\s*=\s*)\w+',
-            r'\g<1>true', content, flags=re.DOTALL)
-        writef(APPEARANCE_CONF, content)
-    def off():
-        run(["hyprctl", "keyword", "decoration:blur:enabled", "false"])
-        content = readf(APPEARANCE_CONF)
-        content = re.sub(
-            r'(blur\s*\{[^}]*?enabled\s*=\s*)\w+',
-            r'\g<1>false', content, flags=re.DOTALL)
-        writef(APPEARANCE_CONF, content)
-    toggle_ui(primary, "Blur", status, on, off)
-
-
 def toggle_dnd(primary):
     def status(): return run_out(["dunstctl", "is-paused"]) == "true"
     def on():
@@ -891,9 +852,9 @@ def appearance_menu(primary):
         ch = show_menu("Appearance", items, primary)
         if ch == "0": break
         if ch == "1": primary = wallpaper_ui(primary)
-        elif ch == "2": simple_picker(primary, "Rounding", "rounding", 0, 9)
+        elif ch == "2": simple_picker(primary, "Rounding", "rounding", 0, 19)
         elif ch == "3": simple_picker(primary, "Gaps in", "gaps_in", 1, 9)
-        elif ch == "4": simple_picker(primary, "Gaps out", "gaps_out", 1, 9)
+        elif ch == "4": simple_picker(primary, "Gaps out", "gaps_out", 1, 25)
         elif ch == "5": simple_picker(primary, "Border size", "border_size", 0, 6)
         elif ch == "6": primary = theme_menu(primary)
 
@@ -901,18 +862,14 @@ def appearance_menu(primary):
 
 def toggles_menu(primary):
     handlers = {
-        "1": toggle_animations,
-        "2": toggle_blur,
-        "3": toggle_dnd,
-        "4": toggle_caffeine,
-        "5": toggle_gamemode,
+        "1": toggle_dnd,
+        "2": toggle_caffeine,
+        "3": toggle_gamemode,
     }
     items = [
-        "1.Animations",
-        "2.Blur",
-        "3.DND",
-        "4.Caffeine",
-        "5.Gamemode",
+        "1.DND",
+        "2.Caffeine",
+        "3.Gamemode",
     ]
     while True:
         ch = show_menu("Toggles", items, primary)
