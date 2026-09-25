@@ -97,6 +97,7 @@ current_idx=0
 SEARCH_FOCUSED=false
 KEY=""
 LAST_RENDER_SIGNATURE=""
+EMPTY_RENDER_SIGNATURE="__wallpaper_picker_empty__"
 
 # Helper: Convert hex to RGB (R;G;B)
 hex_to_rgb() {
@@ -242,7 +243,10 @@ visible_signature() {
 
   local display_n=$((N < FILTERED_COUNT ? N : FILTERED_COUNT))
   local half_n=$((display_n / 2))
-  local signature="count:${FILTERED_COUNT}:idx:${current_idx}:"
+  # Only the files actually on screen affect the image render. Including the
+  # filtered count/current index here caused Kitty to redraw every thumbnail on
+  # nearly every search keystroke, even when the visible cards had not changed.
+  local signature="visible:"
   local i offset w_idx
 
   for ((i = 0; i < display_n; i++)); do
@@ -262,13 +266,16 @@ redraw_screen() {
   if ! [[ "$LINES" =~ ^[0-9]+$ ]]; then LINES=24; fi
 
   if ((FILTERED_COUNT == 0)); then
-    # Clear screen to show "No matching wallpapers"
-    kitty +kitten icat --clear 2>/dev/null
-    echo -ne "\e[H\e[2J"
-    local msg="No matching wallpapers found"
-    local msg_col=$(((COLS - ${#msg}) / 2))
-    echo -ne "\e[$((LINES / 2));${msg_col}H\e[1;31m$msg\e[0m"
-    LAST_RENDER_SIGNATURE=""
+    # Paint the empty state once. Subsequent typing only changes the search
+    # line, avoiding terminal clears while the result remains empty.
+    if [ "$LAST_RENDER_SIGNATURE" != "$EMPTY_RENDER_SIGNATURE" ]; then
+      kitty +kitten icat --clear 2>/dev/null
+      echo -ne "\e[H\e[2J"
+      local msg="No matching wallpapers found"
+      local msg_col=$(((COLS - ${#msg}) / 2))
+      echo -ne "\e[$((LINES / 2));${msg_col}H\e[1;31m$msg\e[0m"
+      LAST_RENDER_SIGNATURE="$EMPTY_RENDER_SIGNATURE"
+    fi
     draw_search_bar
     return
   fi
@@ -320,8 +327,13 @@ redraw_screen() {
   done
   wait
 
-  # Clear terminal images and move cursor home
-  echo -ne "\e[H" # Do NOT clear screen text (prevents background flash)
+  # Returning from the empty state needs a text clear; otherwise the old
+  # "No matching wallpapers found" message remains behind the thumbnails.
+  if [ "$LAST_RENDER_SIGNATURE" = "$EMPTY_RENDER_SIGNATURE" ]; then
+    echo -ne "\e[H\e[2J"
+  else
+    echo -ne "\e[H" # Do NOT clear screen text (prevents background flash)
+  fi
   kitty +kitten icat --clear 2>/dev/null
 
   # Instantly dump all buffered images sequentially
@@ -495,7 +507,7 @@ if [ -n "$FULL_PATH" ] && [ -f "$FULL_PATH" ]; then
   # hook, which calls awww) and regenerates all color templates (sway, waybar,
   # wofi, gtk, kitty, etc.), reloading each one via their post_hooks.
   if command -v matugen &>/dev/null; then
-    matugen image "$FULL_PATH" -m dark --source-color-index 0 --lightness-dark 0.08 --contrast 0
+    matugen image "$FULL_PATH" -m dark --source-color-index 0 --lightness-dark 0.14 --contrast 0
   fi
 
   # Desktop notification indicating success
