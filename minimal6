@@ -320,6 +320,10 @@ def simple_picker(primary, title, cfg_key, lo, hi):
             return
         elif key == 'ESC':
             return
+        elif key.isdigit() and lo <= int(key) <= hi:
+            update_appearance(cfg_key, key)
+            notify(f"{title} set to {key}")
+            return
 
 
 # ── Toggle UI ──
