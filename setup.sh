@@ -217,7 +217,6 @@ done
 
 # Handle special files/dirs
 confirm_and_link "$DOTFILES_DIR/.themes" "$HOME/.themes" ".themes"
-confirm_and_link "$DOTFILES_DIR/.icons" "$HOME/.icons" ".icons"
 
 # .bashrc is sensitive — always ask before touching it.
 read -p "Link minimal6 ~/.bashrc to your home? (y/n): " link_bashrc
@@ -413,6 +412,37 @@ fi
 
 # --- 12. Setting up themes ---
 echo -e "${YELLOW}Setting up themes...${NC}"
+
+# --- Icon Theme Setup ---
+ICON_THEME_NAME="FairyWren_adwaita_Dark"
+ICON_DEST="$HOME/.icons/$ICON_THEME_NAME"
+
+if [ -d "$ICON_DEST" ]; then
+  echo -e "${GREEN}Icon theme ($ICON_THEME_NAME) is already available at ~/.icons/${NC}"
+else
+  mkdir -p "$HOME/.icons"
+  TMP_ICON_TAR="/tmp/icons.tar.xz"
+  LOCAL_ASSET="$DOTFILES_DIR/assets/icons.tar.xz"
+
+  if [ -f "$LOCAL_ASSET" ]; then
+    echo -e "${BLUE}Extracting icons from local asset...${NC}"
+    cp "$LOCAL_ASSET" "$TMP_ICON_TAR"
+  else
+    echo -e "${YELLOW}Downloading icons...${NC}"
+    RELEASE_URL="https://github.com/fallenwesii/minimal6/releases/latest/download/icons.tar.xz"
+    curl -sSL "$RELEASE_URL" -o "$TMP_ICON_TAR"
+  fi
+
+  if [ -f "$TMP_ICON_TAR" ] && [ -s "$TMP_ICON_TAR" ]; then
+    echo -e "${YELLOW}Setting up icons...${NC}"
+    tar -xf "$TMP_ICON_TAR" -C "$HOME/.icons/"
+    rm -f "$TMP_ICON_TAR"
+    echo -e "${GREEN}Icons set up successfully!${NC}"
+  else
+    echo -e "${RED}Failed to download or locate icons.tar.xz archive.${NC}"
+  fi
+fi
+
 read -p "Apply adw-gtk3 theme and generate dynamic colors with matugen? (y/n): " setup_themes
 if [[ "$setup_themes" == "y" || "$setup_themes" == "Y" ]]; then
 
@@ -426,11 +456,12 @@ if [[ "$setup_themes" == "y" || "$setup_themes" == "Y" ]]; then
     echo -e "${GREEN}Flatpak apps can now access themes, icons, and configurations.${NC}"
   fi
 
-  # Set adw-gtk3 theme via gsettings
-  echo -e "${BLUE}Applying adw-gtk3-dark theme via gsettings...${NC}"
+  # Set adw-gtk3 theme & icons via gsettings
+  echo -e "${BLUE}Applying adw-gtk3-dark theme and FairyWren icons via gsettings...${NC}"
   gsettings set org.gnome.desktop.interface gtk-theme "adw-gtk3-dark"
+  gsettings set org.gnome.desktop.interface icon-theme "FairyWren_adwaita_Dark"
   gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
-  echo -e "${GREEN}adw-gtk3-dark theme applied.${NC}"
+  echo -e "${GREEN}adw-gtk3-dark theme and FairyWren icons applied.${NC}"
 
   # Run matugen for dynamic coloring
   MATUGEN_WALLPAPER="$HOME/Pictures/wallpapers/building.png"

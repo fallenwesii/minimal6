@@ -1,0 +1,38 @@
+# Ignore private GTK bookmarks
+config/gtk-3.0/bookmarks
+config/gtk-4.0/bookmarks
+**/bookmarks
+
+# Icon theme directory (uploaded as assets/icons.tar.xz to GitHub Releases)
+.icons/
+
+# Matugen Generated Theme & Color Files
+config/hypr/colors.conf
+config/waybar/colors.css
+config/wofi/colors.css
+config/wlogout/colors.css
+config/alacritty/colors.toml
+config/btop/themes/matugen.theme
+config/cava/themes/matugen
+config/ghostty/themes/Matugen
+config/kitty/themes/Matugen*
+config/quickshell/generated/
+config/opencode/themes/matugen.json
+config/nvim/colors/matugen.vim
+.themes/*/gtk-3.0/colors.css
+.themes/*/gtk-4.0/colors.css
+config/gtk-3.0/colors.css
+config/gtk-4.0/colors.css
+config/gtk-4.0/matugen-override.css
+config/qt5ct/colors/matugen.conf
+config/qt6ct/colors/matugen.conf
+config/Kvantum/matugen/
+
+# Python & Temporary / Backup Files
+__pycache__/
+*.py[cod]
+*.bak
+*.tmp
+*.swp
+*~
+.cache/
