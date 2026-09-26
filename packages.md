@@ -13,7 +13,6 @@ A comprehensive list of packages required for the **minimal6** environment.
 
 ### Interface & Shell
 - **waybar**: Highly customizable Wayland bar for Hyprland.
-- **dunst**: Lightweight replacement for the notification-daemons.
 - **wofi**: A launcher/menu program for Wayland.
 - **wlogout (AUR)**: A logout menu for Wayland.
 - **wofi-emoji (AUR)**: Emoji picker using wofi.

@@ -28,7 +28,7 @@ show_header
 # --- Package Lists ---
 PACMAN_PKGS=(
   "hyprland" "hypridle" "hyprlock" "hyprsunset" "gammastep"
-  "xdg-desktop-portal-hyprland" "waybar" "dunst" "wofi" "nwg-look"
+  "xdg-desktop-portal-hyprland" "waybar" "wofi" "nwg-look"
   "fzf" "gum" "figlet" "grim" "slurp" "wl-clipboard" "cliphist"
   "brightnessctl" "pavucontrol" "polkit-gnome" "gvfs" "tuned" "jq"
   "xdg-utils" "git" "libnotify" "psmisc" "procps-ng" "iproute2"
@@ -38,6 +38,7 @@ PACMAN_PKGS=(
   "networkmanager" "base-devel" "xorg-xhost" "gamemode" "quickshell"
   "neovim" "kvantum" "ghostty" "awww"
   "python3" "python-pyfiglet" "matugen"
+  "gsimplecal" "hyprpicker" "swaync"
 )
 
 AUR_PKGS=(
