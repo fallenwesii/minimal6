@@ -298,4 +298,35 @@ ShellRoot {
             }
         }
     }
+
+    // Clock widget at top-right, Background layer (above wallpaper, below apps)
+    PanelWindow {
+        id: clockWindow
+        screen: Quickshell.screens[0]
+
+        // Background layer: above wallpaper, below normal windows
+        WlrLayershell.layer: WlrLayer.Background
+        WlrLayershell.namespace: "quickshell-clock-analog"
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        WlrLayershell.exclusiveZone: 0
+
+        // Position at top-right
+        anchors.top: true
+        anchors.right: true
+        margins.top: 80
+        margins.right: 32
+
+        // Size
+        implicitWidth: 220
+        implicitHeight: 300
+
+        // Transparent background
+        color: "transparent"
+
+        // The clock face
+        Loader {
+            anchors.fill: parent
+            source: "clock/ClockFaceAnalog.qml"
+        }
+    }
 }
