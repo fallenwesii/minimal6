@@ -423,23 +423,40 @@ else
   mkdir -p "$HOME/.icons"
   TMP_ICON_TAR="/tmp/icons.tar.xz"
   LOCAL_ASSET="$DOTFILES_DIR/assets/icons.tar.xz"
+  RELEASE_URL="https://github.com/fallenwesii/minimal6/releases/latest/download/icons.tar.xz"
 
+  DOWNLOAD_SUCCESS=false
   if [ -f "$LOCAL_ASSET" ]; then
     echo -e "${BLUE}Extracting icons from local asset...${NC}"
     cp "$LOCAL_ASSET" "$TMP_ICON_TAR"
+    DOWNLOAD_SUCCESS=true
   else
-    echo -e "${YELLOW}Downloading icons...${NC}"
-    RELEASE_URL="https://github.com/fallenwesii/minimal6/releases/latest/download/icons.tar.xz"
-    curl -sSL "$RELEASE_URL" -o "$TMP_ICON_TAR"
+    echo -e "${YELLOW}Downloading icons (attempting up to 3 times)...${NC}"
+    for attempt in {1..3}; do
+      echo -e "${BLUE}Attempt $attempt/3: Downloading icon theme...${NC}"
+      rm -f "$TMP_ICON_TAR"
+      if curl -sSL --connect-timeout 10 "$RELEASE_URL" -o "$TMP_ICON_TAR" && [ -s "$TMP_ICON_TAR" ]; then
+        if tar -tf "$TMP_ICON_TAR" &>/dev/null; then
+          DOWNLOAD_SUCCESS=true
+          break
+        fi
+      fi
+      echo -e "${YELLOW}Attempt $attempt failed due to network issues. Retrying in 2 seconds...${NC}"
+      sleep 2
+    done
   fi
 
-  if [ -f "$TMP_ICON_TAR" ] && [ -s "$TMP_ICON_TAR" ]; then
+  if [ "$DOWNLOAD_SUCCESS" = true ] && [ -f "$TMP_ICON_TAR" ]; then
     echo -e "${YELLOW}Setting up icons...${NC}"
     tar -xf "$TMP_ICON_TAR" -C "$HOME/.icons/"
     rm -f "$TMP_ICON_TAR"
-    echo -e "${GREEN}Icons set up successfully!${NC}"
+    if [ -d "$ICON_DEST" ]; then
+      echo -e "${GREEN}Icons set up successfully!${NC}"
+    fi
   else
-    echo -e "${RED}Failed to download or locate icons.tar.xz archive.${NC}"
+    echo -e "${RED}Failed to download icon theme after 3 attempts due to network issues.${NC}"
+    echo -e "${YELLOW}You can manually download and extract the icon theme using this command:${NC}"
+    echo -e "${GREEN}mkdir -p ~/.icons && curl -sSL https://github.com/fallenwesii/minimal6/releases/latest/download/icons.tar.xz | tar -xJ -C ~/.icons/${NC}"
   fi
 fi
 
@@ -467,8 +484,22 @@ if [[ "$setup_themes" == "y" || "$setup_themes" == "Y" ]]; then
   MATUGEN_WALLPAPER="$HOME/Pictures/wallpapers/building.png"
   if [ -f "$MATUGEN_WALLPAPER" ]; then
     echo -e "${BLUE}Generating dynamic colors with matugen...${NC}"
-    matugen -m dark image "$MATUGEN_WALLPAPER" --source-color-index 0
-    echo -e "${GREEN}Dynamic colors applied via matugen.${NC}"
+    MATUGEN_SUCCESS=false
+    for attempt in {1..3}; do
+      if matugen -m dark image "$MATUGEN_WALLPAPER" --source-color-index 0; then
+        MATUGEN_SUCCESS=true
+        break
+      fi
+      echo -e "${YELLOW}Matugen attempt $attempt failed. Retrying in 1 second...${NC}"
+      sleep 1
+    done
+
+    if [ "$MATUGEN_SUCCESS" = true ]; then
+      echo -e "${GREEN}Dynamic colors applied via matugen.${NC}"
+    else
+      echo -e "${RED}Matugen failed after 3 attempts.${NC}"
+      echo -e "${YELLOW}You can run matugen manually with: matugen -m dark image <path-to-wallpaper> --source-color-index 0${NC}"
+    fi
 
     # Re-run GTK symlinks now that .themes is in place and matugen has written colors
     echo -e "${BLUE}Re-linking GTK theme files...${NC}"
@@ -626,14 +657,15 @@ else
   echo "monitor=,preferred,auto,1" >> "$MONITORS_CONF_FILE"
 fi
 
-# If ~/.config/hypr/conf/monitors.conf is a separate copy and not a symlink, sync it as well
+# If ~/.config/hypr/conf/monitors.conf is a separate copy and not resolving to the same file, sync it as well
 if [ -f "$CONF_DIR/hypr/conf/monitors.conf" ] && [ ! -L "$CONF_DIR/hypr/conf/monitors.conf" ]; then
-  cp "$MONITORS_CONF_FILE" "$CONF_DIR/hypr/conf/monitors.conf"
+  if [ "$(realpath "$MONITORS_CONF_FILE" 2>/dev/null)" != "$(realpath "$CONF_DIR/hypr/conf/monitors.conf" 2>/dev/null)" ]; then
+    cp "$MONITORS_CONF_FILE" "$CONF_DIR/hypr/conf/monitors.conf"
+  fi
 fi
 
 # --- 14. Final Message ---
-clear
-show_header
+echo ""
 if command -v gum &>/dev/null; then
   gum style --foreground 82 --border-foreground 82 --border normal --align center --width 50 \
     "Setup Complete!" "Press Super + H for Keybinds Help"

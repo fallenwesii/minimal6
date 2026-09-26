@@ -3,12 +3,18 @@
 If colors don't match after changing wallpaper, run through these fixes. 
 `wallpaper-switcher or minimal6(quick-settings)` + `matugen` generates the palette, but some apps need you to select the theme once.
 
+### **Missing Icons / Icon Theme Setup Failure**
+If icon theme download failed during setup (e.g. network timeout), run this command in your terminal to manually download and install the icon theme from GitHub Releases:
+```bash
+mkdir -p ~/.icons && curl -sSL https://github.com/fallenwesii/minimal6/releases/latest/download/icons.tar.xz | tar -xJ -C ~/.icons/
+```
+
 ### **GTK3 / GTK4 / Libadwaita apps**
 Ex: Nautilus, GNOME apps
 1. Open `nwg-look`
 2. **GTK3 Theme**: `adw-gtk3`
 3. **GTK4 Theme**: `adw-gtk3`
-4. **Icon Theme**: pick whatever you set in m6
+4. **Icon Theme**: `FairyWren_adwaita_Dark`
 
 Matugen will auto-update the colors in these themes when wallpaper changes.
 
@@ -30,4 +36,4 @@ Any app that supports theming: look for a `matugen` theme option in its settings
 Once set, matugen will recolor it on every wallpaper change.
 
 ---
-**TLDR**: Pick the `matugen` / `adw-gtk3` theme once per toolkit. After that it's automatic.
+**TLDR**: Pick the `matugen` / `adw-gtk3` / `FairyWren_adwaita_Dark` theme once per toolkit. After that it's automatic.
