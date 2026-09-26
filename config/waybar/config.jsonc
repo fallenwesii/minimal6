@@ -12,10 +12,10 @@
   ],
   "modules-right": [
     "network#speed",
+    "custom/notification",
     "custom/tuned",
     "memory",
     "cpu",
-    "pulseaudio",
     "battery",
     "custom/battery-watcher",
     "custom/nightmode",
@@ -30,8 +30,8 @@
   "clock": {
     "format": " 󰸗 {:%I:%M %p} ",
     "interval": 60,
-    "tooltip": true,
-    "tooltip-format": "{:%A, %d %B %Y}"
+    "tooltip": false,
+    "on-click": "gsimplecal"
   },
   "hyprland/workspaces": {
     "format": "{icon}",
@@ -83,13 +83,6 @@
     "format": " {usage}% ",
     "tooltip": true,
     "tooltip-format": "CPU: {usage}%\nLoad: {load}\nAvg frequency: {avg_frequency} GHz"
-  },
-  "pulseaudio": {
-    "format": " {volume}% ",
-    "tooltip": true,
-    "tooltip-format": "{desc}: {volume}%",
-    "scroll-step": 1,
-    "on-click": "pavucontrol"
   },
   "custom/nightmode": {
     "exec": "bash -lc '~/.config/waybar/scripts/hyprsunset.sh status'",
@@ -157,6 +150,26 @@
     "format": " ",
     "tooltip": false,
     "on-click": "exec wlogout -p layer-shell"
+  },
+  "custom/notification": {
+    "tooltip": false,
+    "format": "{icon}",
+    "format-icons": {
+      "notification": "󱅫",
+      "none": "󰂜",
+      "dnd-notification": "󰂛",
+      "dnd-none": "󰪑",
+      "inhibited-notification": "󱅫",
+      "inhibited-none": "󰂜",
+      "dnd-inhibited-notification": "󰂛",
+      "dnd-inhibited-none": "󰪑"
+    },
+    "return-type": "json",
+    "exec-if": "which swaync-client",
+    "exec": "swaync-client -swb",
+    "on-click": "swaync-client -t -sw",
+    "on-click-right": "swaync-client -d -sw",
+    "escape": true
   },
   "custom/tuned": {
     "exec": "tuned-adm active | awk '{ if ($4 == \"powersave\") print \"{\\\"text\\\":\\\"\\\",\\\"class\\\":\\\"powersave\\\"}\"; else if ($4 == \"balanced\") print \"{\\\"text\\\":\\\"󰾆\\\",\\\"class\\\":\\\"balanced\\\"}\"; else print \"{\\\"text\\\":\\\"󰓅\\\",\\\"class\\\":\\\"performance\\\"}\" }'",

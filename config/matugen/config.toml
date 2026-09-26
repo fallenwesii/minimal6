@@ -83,6 +83,12 @@ input_path = '~/.config/matugen/templates/dunstrc'
 output_path = '~/.config/dunst/dunstrc'
 post_hook = 'dunstctl reload || true'
 
+[templates.swaync]
+input_path = '~/.config/matugen/templates/swaync.css'
+output_path = '~/.config/swaync/colors.css'
+post_hook = 'swaync-client -rs || true'
+
+
 [templates.wlogout]
 input_path = '~/.config/matugen/templates/wlogout.css'
 output_path = '~/.config/wlogout/colors.css'

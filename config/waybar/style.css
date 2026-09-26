@@ -51,11 +51,11 @@
 
 #memory,
 #cpu,
-#pulseaudio,
 #battery,
 #custom-nightmode,
 #custom-bluetooth,
 #network,
+#custom-notification,
 #custom-powermenu,
 #custom-tuned,
 #custom-tuned.powersave,
@@ -93,9 +93,6 @@
   margin-right: 5px; /* Increased gap right after CPU to break up the clutter */
 }
 
-#pulseaudio {
-  margin-right: 3px; /* Added breathing room for audio */
-}
 
 #battery {
   margin-right: 12px; /* Added breathing room for battery */
@@ -109,6 +106,13 @@
 #network.speed {
   margin-left: 5px;
   margin-right: 0px;
+}
+
+#custom-notification {
+  padding-left: 2px;
+  padding-right: 7px;
+  margin-left: 2px;
+  margin-right: 7px;
 }
 
 #custom-bluetooth {

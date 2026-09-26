@@ -1,0 +1,344 @@
+/* SwayNC Clean Native GTK4 Stylesheet */
+@import url("colors.css");
+
+:root {
+  --cc-bg: @surface;
+  --noti-bg: @surface_container;
+  --noti-bg-hover: @surface_container_high;
+  --noti-bg-focus: @surface_container_highest;
+  --noti-border-color: @outline;
+  --noti-close-bg: rgba(255, 255, 255, 0.08);
+  --noti-close-bg-hover: @error;
+  --text-color: @on_surface;
+  --text-color-disabled: @outline_variant;
+  --bg-selected: @primary;
+  --border-radius: 10px;
+  --mpris-album-art-icon-size: 64px;
+  --widget-volume-row-icon-size: 16px;
+  --notification-icon-size: 44px;
+  --notification-app-icon-size: 14px;
+}
+
+* {
+  font-family: "FiraCode", "Iosevka Nerd Font", sans-serif;
+  font-size: 11px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+notificationwindow,
+blankwindow {
+  background: transparent;
+}
+
+/* Close Button */
+.close-button {
+  background: rgba(255, 255, 255, 0.08);
+  color: @on_surface;
+  text-shadow: none;
+  padding: 0;
+  border-radius: 100%;
+  margin-top: 4px;
+  margin-right: 4px;
+  box-shadow: none;
+  border: 1px solid @outline_variant;
+  min-width: 20px;
+  min-height: 20px;
+}
+
+.close-button:hover {
+  background: @error;
+  color: @surface;
+  border-color: @error;
+}
+
+/* Control Center Panel */
+.control-center {
+  background-color: @surface;
+  color: @on_surface;
+  border: 1px solid @outline;
+  border-radius: 14px;
+  padding: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.control-center-list-placeholder {
+  opacity: 0.6;
+  font-weight: bold;
+  font-size: 1.0rem;
+}
+
+.control-center-list {
+  background: transparent;
+}
+
+/* Floating Notifications */
+.floating-notifications {
+  background: transparent;
+}
+
+.floating-notifications .notification-row {
+  background: none;
+  outline: none;
+  padding: 2px;
+}
+
+.notification-row {
+  background: none;
+  outline: none;
+  transition: all 0.15s ease-in-out;
+}
+
+.notification-row:focus {
+  background: @surface_container_highest;
+}
+
+.notification-row .notification-background {
+  padding: 2px 4px;
+}
+
+.notification-row .notification-background .notification {
+  border-radius: 10px;
+  border: 1px solid @outline;
+  padding: 4px 6px;
+  background: @surface_container;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.notification-row .notification-background .notification.low {
+  border-color: @outline_variant;
+}
+
+.notification-row .notification-background .notification.normal {
+  border-color: @primary;
+}
+
+.notification-row .notification-background .notification.critical {
+  border-color: @error;
+}
+
+.notification-default-action {
+  padding: 4px;
+  margin: 0;
+  box-shadow: none;
+  background: transparent;
+  border: none;
+  color: @on_surface;
+  border-radius: 8px;
+}
+
+.notification-default-action:hover {
+  background: @surface_container_high;
+}
+
+.notification-default-action .notification-content {
+  background: transparent;
+  padding: 0;
+}
+
+.notification-default-action .notification-content .image {
+  -gtk-icon-size: 44px;
+  border-radius: 8px;
+  margin: 2px 6px 2px 2px;
+}
+
+.notification-default-action .notification-content .app-icon {
+  -gtk-icon-size: 14px;
+  margin: 2px;
+}
+
+.notification-default-action .notification-content .summary {
+  font-size: 12px;
+  font-weight: bold;
+  color: @primary;
+}
+
+.notification-default-action .notification-content .time {
+  font-size: 10px;
+  font-weight: normal;
+  color: @outline;
+  margin-right: 20px;
+}
+
+.notification-default-action .notification-content .body {
+  font-size: 11px;
+  font-weight: normal;
+  color: @on_surface;
+  margin-top: 2px;
+}
+
+/* Action Buttons inside Notifications */
+.notification-action {
+  margin: 2px;
+}
+
+.notification-action > button {
+  border-radius: 6px;
+  background: @surface_container_high;
+  color: @on_surface;
+  border: 1px solid @outline;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.notification-action > button:hover {
+  background: @primary;
+  color: @on_primary;
+  border-color: @primary;
+}
+
+/* Widgets Base */
+.widget {
+  background: @surface_container_low;
+  margin: 2px 0px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid @outline_variant;
+}
+
+/* Title Widget */
+.widget-title {
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  margin-bottom: 2px;
+}
+
+.widget-title > label {
+  font-size: 13px;
+  font-weight: bold;
+  color: @primary;
+}
+
+.widget-title > button {
+  background: @surface_container_high;
+  color: @on_surface;
+  border: 1px solid @outline;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.widget-title > button:hover {
+  background: @error;
+  color: @surface;
+  border-color: @error;
+}
+
+/* DND Widget */
+.widget-dnd {
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  margin-bottom: 4px;
+}
+
+.widget-dnd label {
+  color: @on_surface;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.widget-dnd switch {
+  background: @surface_container_high;
+  border: 1px solid @outline;
+  border-radius: 12px;
+}
+
+.widget-dnd switch:checked {
+  background: @primary;
+}
+
+.widget-dnd switch slider {
+  background: @on_surface;
+  border-radius: 12px;
+}
+
+/* MPRIS Media Player Card */
+.widget-mpris {
+  padding: 0;
+  margin: 4px 0px;
+  background: transparent;
+  border: none;
+}
+
+.widget-mpris .widget-mpris-player {
+  background: @surface_container;
+  border: 1px solid @outline;
+  border-radius: 10px;
+  padding: 8px;
+  margin: 0px;
+}
+
+.widget-mpris .widget-mpris-player .mpris-overlay {
+  background: transparent;
+  padding: 2px;
+}
+
+.widget-mpris .widget-mpris-player .widget-mpris-album-art {
+  border-radius: 8px;
+  -gtk-icon-size: 64px;
+}
+
+.widget-mpris .widget-mpris-player .widget-mpris-title {
+  font-weight: bold;
+  font-size: 12px;
+  color: @primary;
+}
+
+.widget-mpris .widget-mpris-player .widget-mpris-subtitle {
+  font-size: 10px;
+  color: @on_surface;
+}
+
+.widget-mpris .widget-mpris-player button {
+  background: @surface_container_high;
+  color: @on_surface;
+  border-radius: 6px;
+  border: 1px solid @outline;
+  padding: 2px 6px;
+  min-height: 22px;
+  min-width: 22px;
+  font-size: 10px;
+}
+
+.widget-mpris .widget-mpris-player button:hover {
+  background: @primary;
+  color: @on_primary;
+}
+
+/* Sliders (Volume & Backlight) */
+.widget-volume,
+.widget-backlight {
+  padding: 4px 8px;
+  margin: 2px 0px;
+  background: @surface_container_low;
+  border-radius: 8px;
+  border: 1px solid @outline_variant;
+}
+
+.widget-volume label,
+.widget-backlight label {
+  color: @primary;
+  font-size: 13px;
+  margin-right: 6px;
+}
+
+scale trough {
+  background: @surface_container_highest;
+  border-radius: 6px;
+  min-height: 6px;
+}
+
+scale highlight {
+  background: @primary;
+  border-radius: 6px;
+}
+
+scale slider {
+  background: @on_surface;
+  border-radius: 100%;
+  min-width: 12px;
+  min-height: 12px;
+}
