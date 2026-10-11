@@ -223,6 +223,15 @@ for bak in "$CONF_DIR"/*.bak_*; do
   fi
 done
 
+# Clean up legacy .icons symlink if it points to dotfiles or is broken
+if [ -L "$HOME/.icons" ]; then
+  if [ ! -e "$HOME/.icons" ] || is_dotfiles_link "$HOME/.icons"; then
+    echo -e "${YELLOW}Removing stale/broken .icons symlink...${NC}"
+    rm -f "$HOME/.icons"
+  fi
+fi
+mkdir -p "$HOME/.icons"
+
 # Handle special files/dirs
 confirm_and_link "$DOTFILES_DIR/.themes" "$HOME/.themes" ".themes"
 
@@ -423,13 +432,28 @@ fi
 
 # --- 11. Icon Theme Setup (FairyWren) ---
 echo -e "${YELLOW}Setting up icon theme...${NC}"
-ICON_THEME_NAME="FairyWren_adwaita_Dark"
-ICON_DEST="$HOME/.icons/$ICON_THEME_NAME"
 
-if [ -d "$ICON_DEST" ]; then
-  echo -e "${GREEN}Icon theme ($ICON_THEME_NAME) is already available at ~/.icons/${NC}"
+# Ensure ~/.icons exists and is not a dangling symlink
+if [ -L "$HOME/.icons" ] && { [ ! -e "$HOME/.icons" ] || is_dotfiles_link "$HOME/.icons"; }; then
+  echo -e "${YELLOW}Removing stale/broken .icons symlink...${NC}"
+  rm -f "$HOME/.icons"
+fi
+mkdir -p "$HOME/.icons"
+
+# Check if any fairyw* icon theme directory is already available in ~/.icons/
+found_icon=""
+shopt -s nullglob nocaseglob
+for entry in "$HOME/.icons"/fairyw*; do
+  if [ -d "$entry" ]; then
+    found_icon="$(basename "$entry")"
+    break
+  fi
+done
+shopt -u nullglob nocaseglob
+
+if [ -n "$found_icon" ]; then
+  echo -e "${GREEN}Icon theme ($found_icon) is already available at ~/.icons/${NC}"
 else
-  mkdir -p "$HOME/.icons"
   TMP_ICON_TAR="/tmp/icons.tar.xz"
   LOCAL_ASSET="$DOTFILES_DIR/assets/icons.tar.xz"
   RELEASE_URL="https://github.com/fallenwesii/minimal6/releases/latest/download/icons.tar.xz"
@@ -441,32 +465,35 @@ else
     DOWNLOAD_SUCCESS=true
   else
     echo -e "${YELLOW}Downloading icons (attempting up to 3 times)...${NC}"
-    for attempt in {1..3}; do
+    for attempt in 1 2 3; do
       echo -e "${BLUE}Attempt $attempt/3: Downloading icon theme...${NC}"
       rm -f "$TMP_ICON_TAR"
-      if curl -sSL --connect-timeout 10 "$RELEASE_URL" -o "$TMP_ICON_TAR" && [ -s "$TMP_ICON_TAR" ]; then
+      if curl -fL --connect-timeout 15 --max-time 180 "$RELEASE_URL" -o "$TMP_ICON_TAR" && [ -s "$TMP_ICON_TAR" ]; then
         if tar -tf "$TMP_ICON_TAR" &>/dev/null; then
           DOWNLOAD_SUCCESS=true
           break
         fi
       fi
-      echo -e "${YELLOW}Attempt $attempt failed due to network issues. Retrying in 2 seconds...${NC}"
-      sleep 2
+      if [ "$attempt" -lt 3 ]; then
+        echo -e "${YELLOW}Attempt $attempt failed. Retrying in 2 seconds...${NC}"
+        sleep 2
+      fi
     done
   fi
 
   if [ "$DOWNLOAD_SUCCESS" = true ] && [ -f "$TMP_ICON_TAR" ]; then
-    mkdir -p "$HOME/.icons"
     echo -e "${YELLOW}Setting up icons...${NC}"
-    tar -xf "$TMP_ICON_TAR" -C "$HOME/.icons/"
-    rm -f "$TMP_ICON_TAR"
-    if [ -d "$ICON_DEST" ]; then
+    if tar -xf "$TMP_ICON_TAR" -C "$HOME/.icons/"; then
+      rm -f "$TMP_ICON_TAR"
       echo -e "${GREEN}Icons set up successfully!${NC}"
+    else
+      echo -e "${RED}Failed to extract icons archive.${NC}"
+      rm -f "$TMP_ICON_TAR"
     fi
   else
     echo -e "${RED}Failed to download icon theme after 3 attempts due to network issues.${NC}"
     echo -e "${YELLOW}You can manually download and extract the icon theme using this command:${NC}"
-    echo -e "${GREEN}mkdir -p ~/.icons && curl -sSL https://github.com/fallenwesii/minimal6/releases/latest/download/icons.tar.xz | tar -xJ -C ~/.icons/${NC}"
+    echo -e "${GREEN}mkdir -p ~/.icons && curl -fSL https://github.com/fallenwesii/minimal6/releases/latest/download/icons.tar.xz | tar -xJ -C ~/.icons/${NC}"
   fi
 fi
 
