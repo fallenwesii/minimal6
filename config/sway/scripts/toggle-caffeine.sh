@@ -20,9 +20,9 @@ else
     # Enable Caffeine (Prevent sleep)
     touch "$CAFFEINE_LOCK"
     
-    # Kill both idle managers
-    killall -9 swayidle 2>/dev/null
+    # Kill media-idle first so it cannot respawn swayidle before we kill it
     pkill -9 -f "media-idle.sh" 2>/dev/null
+    killall -9 swayidle 2>/dev/null
 
     notify-send "Caffeine ON" "Screen sleep prevented." -a "sway" -i "coffee" -r $notify_id -t 2000
 fi
