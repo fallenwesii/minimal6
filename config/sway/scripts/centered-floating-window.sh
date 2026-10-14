@@ -25,6 +25,10 @@ if focused:
 TYPE=$(echo "$FOCUSED" | head -1)
 FLOAT_STATE=$(echo "$FOCUSED" | tail -1)
 
+APPEARANCE="$HOME/.config/sway/conf/appearance.conf"
+FLOAT_W=$(awk '/^default_floating_border/{print $3}' "$APPEARANCE")
+TILE_W=$(awk '/^default_border/{print $3}' "$APPEARANCE")
+
 # Toggle floating
 swaymsg floating toggle
 
@@ -34,3 +38,7 @@ if [ "$FLOAT_STATE" = "tiled" ]; then
   swaymsg resize set 950 600
   swaymsg move position center
 fi
+
+# Re-apply border — GTK/Electron apps often lose it when floated
+swaymsg "[con_id=__focused__ floating] border pixel ${FLOAT_W:-3}"
+swaymsg "[con_id=__focused__ tiling] border pixel ${TILE_W:-3}"
