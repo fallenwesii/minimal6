@@ -10,7 +10,10 @@
 #   3. matugen  — templates + hooks (~8s), wallpaper untouched
 #      (config.toml has no [config.wallpaper] section anymore).
 # A pidfile guard kills any previous run still in flight, so switching
-# wallpapers rapidly can never pile up matugen/reload spikes.
+# wallpapers rapidly can never pile up matugen/reload spikes. An flock on
+# top of it closes the remaining hole: the pidfile check is read-then-act,
+# so two applies starting in the same instant could both pass it and both
+# run matugen. Only the lock holder applies.
 
 set -u
 
@@ -32,6 +35,15 @@ if [ -r "$PIDFILE" ]; then
     kill "$old" 2>/dev/null
   fi
 fi
+
+# Exclusive lock for the rest of this pass. Held on fd 9 for the lifetime
+# of the script, and dropped by the kernel if the pass is killed, so it
+# cannot go stale the way a pid file can.
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$HOME/.cache/wallpaper-apply.lock"
+  flock -w 5 9 || exit 1
+fi
+
 echo $$ >"$PIDFILE"
 
 awww img --transition-type grow --transition-duration "$TRANSITION_DURATION" "$IMAGE" >/dev/null 2>&1

@@ -38,7 +38,7 @@ declare -A KEYBINDS=(
   ["SUPER + CTRL + 1     │ Toggle Caffeine (Prevent Sleep)"]="swaymsg exec ~/.config/sway/scripts/toggle-caffeine.sh"
   ["SUPER + CTRL + 2     │ Toggle Gamemode (Performance)"]="swaymsg exec ~/.config/sway/scripts/toggle-gamemode.sh"
   ["SUPER + CTRL + R     │ Reload Sway Config (Full)"]="swaymsg exec ~/.config/sway/scripts/reload-config.sh"
-  ["SUPER + CTRL + W     │ Wallpaper Switcher"]="swaymsg exec 'kitty --class wallpaper-picker -e ~/.config/sway/scripts/wallpaper-switcher.sh'"
+  ["SUPER + CTRL + W     │ Wallpaper Switcher"]="swaymsg exec '~/.config/sway/scripts/wallpaper-switcher.sh'"
   ["SUPER + ALT + E      │ File Manager (yazi terminal)"]="swaymsg exec 'kitty --app-id=yazi --class=yazi -e yazi'"
   ["SUPER + D            │ Open VSCode (codium)"]="swaymsg exec codium"
   ["SUPER + B            │ Open Brave Browser"]="swaymsg exec brave"
