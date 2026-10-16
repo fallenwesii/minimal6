@@ -4,7 +4,7 @@ Wallpaper Switcher — GTK3 horizontal carousel wallpaper picker for SwayFX.
 
 Native floating window (app_id="wallpaper-picker"): thumbnail carousel,
 Left/Right keys or mouse scroll to navigate, Esc closes, Enter / center
-click applies. Search is keystroke-driven and matches the full file path
+click applies. Search is keystroke-driven and matches the file name
 (no visible search widget). The selected card shows a taller 200x250
 thumbnail with a matugen border baked in — that size jump is the carousel's
 "grow" animation feel.
@@ -32,10 +32,12 @@ import fcntl
 import json
 import os
 import random
+import shlex
 import shutil
 import signal
 import subprocess
 import sys
+import time
 
 PID_FILE = os.path.expanduser("~/.cache/wallpaper-picker.pid")
 CACHE_DIR = os.path.expanduser("~/.cache/wallpaper-picker")
@@ -125,6 +127,33 @@ def pid_is_picker(pid):
     return "wallpaper-switcher.py" in cmdline and "--generate-cache" not in cmdline
 
 
+def signal_open_picker():
+    """SIGTERM the picker that already holds the UI lock.
+
+    The winner writes PID_FILE just after taking the flock, so a toggle that
+    lands in the same instant can read the file before that write and miss
+    the window entirely (the press then appears to do nothing). Poll briefly
+    for a live picker pid before giving up.
+    """
+    deadline = time.monotonic() + 1.0
+    while True:
+        old_pid = 0
+        try:
+            with open(PID_FILE) as f:
+                old_pid = int(f.read().strip())
+        except Exception:
+            old_pid = 0
+        if old_pid and old_pid != os.getpid() and pid_is_picker(old_pid):
+            try:
+                os.kill(old_pid, signal.SIGTERM)
+            except OSError:
+                pass
+            return
+        if time.monotonic() >= deadline:
+            return
+        time.sleep(0.02)
+
+
 def check_toggle_instance():
     """Toggle: a second press closes the picker that is already open.
 
@@ -148,17 +177,7 @@ def check_toggle_instance():
         if _ui_lock_fd is not None:
             os.close(_ui_lock_fd)
             _ui_lock_fd = None
-        old_pid = 0
-        try:
-            with open(PID_FILE) as f:
-                old_pid = int(f.read().strip())
-        except Exception:
-            pass
-        if old_pid and old_pid != os.getpid() and pid_is_picker(old_pid):
-            try:
-                os.kill(old_pid, signal.SIGTERM)
-            except OSError:
-                pass
+        signal_open_picker()
         sys.exit(0)
 
     with open(PID_FILE, "w") as f:
@@ -341,6 +360,9 @@ def extract_primary(wall_path, out_path):
     primary = "#ffffff"
     if shutil.which("matugen"):
         try:
+            # Raw path, NOT image_arg(): matugen's loader has no ImageMagick
+            # `file.gif[0]` frame syntax and errors on it, falling back to
+            # white. It reads the first frame of a GIF on its own.
             res = subprocess.run(
                 ["matugen", "image", wall_path, "-j", "hex", "--dry-run"],
                 capture_output=True, text=True, timeout=120,
@@ -493,11 +515,8 @@ class WallpaperCarousel(Gtk.Window):
         return wall_path
 
     def load_pixbuf(self, source):
-        pb = self.pixbuf_cache.get(source)
-        if pb is not None:
-            return pb
-        if source in self.pixbuf_cache:  # failed before
-            return None
+        if source in self.pixbuf_cache:  # cached, including failed loads
+            return self.pixbuf_cache[source]
         try:
             # Cached thumbs are already at display size, so the scale hint
             # only makes gdk-pixbuf scale a copy of itself (~20% slower per
@@ -512,11 +531,12 @@ class WallpaperCarousel(Gtk.Window):
                     source, ACTIVE_W, ACTIVE_H, True
                 )
         except Exception:
-            self.pixbuf_cache[source] = None
-            return None
-        if len(self.pixbuf_cache) > 60:
-            self.pixbuf_cache.pop(next(iter(self.pixbuf_cache)))
+            pb = None
+        # Cap the cache whether the load succeeded or failed; otherwise a
+        # run of unreadable files would grow the failure entries forever.
         self.pixbuf_cache[source] = pb
+        while len(self.pixbuf_cache) > 60:
+            self.pixbuf_cache.pop(next(iter(self.pixbuf_cache)))
         return pb
 
     # --- rendering -------------------------------------------------------
@@ -631,11 +651,20 @@ class WallpaperCarousel(Gtk.Window):
             return True
 
         # Any printable keystroke feeds the invisible search (fix 2: the
-        # search stays enabled, there is just no search UI to show)
+        # search stays enabled, there is just no search UI to show). Ignore
+        # keystrokes with Ctrl/Alt/Super held so shortcuts don't type into
+        # the query (Alt+letter still yields a printable event.string).
         if event.string and event.string.isprintable():
-            self.search_query += event.string
-            self._apply_filter()
-            return True
+            mods = event.state & (
+                Gdk.ModifierType.CONTROL_MASK
+                | Gdk.ModifierType.MOD1_MASK     # Alt
+                | Gdk.ModifierType.SUPER_MASK
+                | Gdk.ModifierType.META_MASK
+            )
+            if not mods:
+                self.search_query += event.string
+                self._apply_filter()
+                return True
 
         return False
 
@@ -663,9 +692,11 @@ class WallpaperCarousel(Gtk.Window):
         if not query:
             self.filtered_wallpapers = list(self.all_wallpapers)
         else:
-            # Full-path search, like the backed-up script
+            # Match the file name only: matching the whole path made common
+            # directory names (e.g. "wall") match every wallpaper.
             self.filtered_wallpapers = [
-                f for f in self.all_wallpapers if query in f.lower()
+                f for f in self.all_wallpapers
+                if query in os.path.basename(f).lower()
             ]
         self.current_idx = 0
         self.update_carousel()
@@ -681,13 +712,23 @@ class WallpaperCarousel(Gtk.Window):
             return
 
         # Hand off to sway so apply-wallpaper.sh (awww transition +
-        # matugen retheme) keeps running after this process is gone
+        # matugen retheme) keeps running after this process is gone.
+        # shlex.quote: a filename with a single quote must neither break the
+        # shell string swaymsg hands to `sh -c` nor inject commands.
+        command = f"{shlex.quote(APPLY_SCRIPT)} {shlex.quote(selected)}"
+        applied = False
         try:
-            subprocess.Popen(
-                ["swaymsg", "exec", f"'{APPLY_SCRIPT}' '{selected}'"],
+            res = subprocess.run(
+                ["swaymsg", "exec", command],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=5,
             )
-        except OSError:
+            applied = res.returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            applied = False
+        if not applied:
+            # No sway IPC (or it rejected the exec): run the applier
+            # directly, detached so it outlives the picker.
             subprocess.Popen(
                 ["sh", APPLY_SCRIPT, selected],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

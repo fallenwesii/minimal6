@@ -39,18 +39,30 @@ fi
 # Exclusive lock for the rest of this pass. Held on fd 9 for the lifetime
 # of the script, and dropped by the kernel if the pass is killed, so it
 # cannot go stale the way a pid file can.
+#
+# Children MUST NOT inherit fd 9: matugen's post-hooks start long-lived
+# daemons (quickshell via `qs -d`, which itself spawns `swaymsg --monitor`),
+# and an inherited fd keeps the flock's open file description alive forever
+# after this script exits. That leaked lock made every later apply time out
+# at `flock -w 5` and silently do nothing. Every external command below is
+# therefore run with fd 9 closed (`9>&-`); closing an unopened fd is a no-op,
+# so this stays safe when flock is unavailable.
 if command -v flock >/dev/null 2>&1; then
   exec 9>"$HOME/.cache/wallpaper-apply.lock"
-  flock -w 5 9 || exit 1
+  flock -w 5 9 || {
+    notify-send -a 'Wallpaper Picker' 'Wallpaper apply busy' \
+      'Another apply is stuck holding the lock' 2>/dev/null
+    exit 1
+  }
 fi
 
 echo $$ >"$PIDFILE"
 
-awww img --transition-type grow --transition-duration "$TRANSITION_DURATION" "$IMAGE" >/dev/null 2>&1
+awww img --transition-type grow --transition-duration "$TRANSITION_DURATION" "$IMAGE" >/dev/null 2>&1 9>&-
 sleep "$TRANSITION_DURATION"
 
 if command -v matugen >/dev/null 2>&1; then
-  matugen image "$IMAGE" -m dark --source-color-index 0 --lightness-dark 0.14 --contrast 0 >/dev/null 2>&1
+  matugen image "$IMAGE" -m dark --source-color-index 0 --lightness-dark 0.14 --contrast 0 >/dev/null 2>&1 9>&-
 fi
 
 # Keep gsettings in sync (picker always applies a dark palette).
