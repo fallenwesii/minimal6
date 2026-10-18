@@ -51,7 +51,7 @@ WALLPAPER_DIRS = ("~/Pictures/wallpapers", "~/Pictures/wallpaper")
 SUPPORTED_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 
 # --- UI knobs -----------------------------------------------------------
-WINDOW_RADIUS = 17    # window corner roundness (GTK paints it; SwayFX
+WINDOW_RADIUS = 30    # window corner roundness (GTK paints it; SwayFX
                       # corner_radius in the window rules controls the rest)
 THUMB_RADIUS = 15     # rounded-corner mask baked into cached thumbnails
 THUMB_SIZE = 200      # side (inactive) thumbnails: 200x200
