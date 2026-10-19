@@ -21,7 +21,7 @@ A comprehensive list of packages required for the **msc** environment.
 - **gsimplecal**: Simple calendar for Wayland (calendar popup for Waybar).
 - **nwg-look**: GTK3 settings editor (GNOME customization tool).
 - **fzf**: Command-line fuzzy finder, used in help and settings scripts.
-- **gum**: Tool for glamorous shell scripts (used in setup wizard).
+- **gum**: Tool for glamorous shell scripts (used in setup/update wizard).
 
 ### Utilities & Tools
 - **grim**: Screenshot utility for Wayland.

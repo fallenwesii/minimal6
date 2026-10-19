@@ -24,7 +24,7 @@
 }
 {
     "label" : "logout",
-    "action" : "swaymsg exit",
+    "action" : "swaynag -t warning -m 'Do you really want to exit SwayFX?' -B 'Yes, exit SwayFX' 'swaymsg exit'",
     "text" : "Logout",
     "keybind" : "e"
 }
