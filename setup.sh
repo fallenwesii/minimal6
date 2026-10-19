@@ -38,7 +38,7 @@ PACMAN_PKGS=(
   "networkmanager" "network-manager-applet" "base-devel" "xorg-xhost" "quickshell"
   "neovim" "kvantum" "ghostty" "awww"
   "python3" "python-pyfiglet" "matugen" "autotiling"
-  "gsimplecal" "gamemode" "hyprlock" "hyprpicker" "playerctl" "imagemagick"
+  "gsimplecal" "gamemode" "hyprlock" "hyprpicker" "playerctl" "imagemagick" "gnome-keyring"
 )
 
 AUR_PKGS=(
@@ -538,6 +538,7 @@ fi
 # --- 14. QT/Kvantum Environment configuration ---
 echo -e "${YELLOW}Setting up QT/Kvantum environment...${NC}"
 systemctl --user daemon-reload
+systemctl --user restart xdg-desktop-portal
 echo -e "${GREEN}QT/Kvantum environment configured (via 90-msc.conf) and systemd user manager reloaded.\nA reboot is recommended for Qt/Kvantum theming${NC}"
 
 # --- 15. Final Message ---
