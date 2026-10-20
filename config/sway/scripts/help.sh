@@ -10,9 +10,13 @@ done
 
 # Fetch variables from sway config to ensure consistency
 SWAY_CONF="$HOME/.config/sway/config"
-TERMINAL=$(grep -Po '^\s*set\s+\$term\s+\K.*' "$SWAY_CONF" | head -1 || echo "ghostty")
-FILE_MANAGER=$(grep -Po '^\s*set\s+\$fileManager\s+\K.*' "$SWAY_CONF" | head -1 || echo "nautilus --new-window")
-MENU=$(grep -Po '^\s*set\s+\$menu\s+\K.*' "$SWAY_CONF" | head -1 || echo "wofi --show drun")
+PROGRAMS_CONF="$(dirname "$SWAY_CONF")/conf/programs.conf"
+TERMINAL=$(grep -hPo '^\s*set\s+\$term\s+\K.*' "$SWAY_CONF" "$PROGRAMS_CONF" 2>/dev/null | head -1)
+FILE_MANAGER=$(grep -hPo '^\s*set\s+\$fileManager\s+\K.*' "$SWAY_CONF" "$PROGRAMS_CONF" 2>/dev/null | head -1)
+MENU=$(grep -hPo '^\s*set\s+\$menu\s+\K.*' "$SWAY_CONF" "$PROGRAMS_CONF" 2>/dev/null | head -1)
+TERMINAL=${TERMINAL:-ghostty}
+FILE_MANAGER=${FILE_MANAGER:-nautilus --new-window}
+MENU=${MENU:-wofi --show drun}
 
 # Define your shortcuts
 declare -A KEYBINDS=(
@@ -22,22 +26,23 @@ declare -A KEYBINDS=(
   ["SUPER + M            │ System Monitor (btop)"]="swaymsg exec 'kitty --app-id=btop --class=btop -e btop'"
   ["SUPER + SHIFT + E    │ Exit Sway Session"]="swaymsg exec \"swaynag -t warning -m 'Do you really want to exit SwayFX?' -B 'Yes, exit SwayFX' 'swaymsg exit'\""
   ["SUPER + E            │ Open File Manager"]="swaymsg exec '$FILE_MANAGER'"
-  ["SUPER + V            │ Toggle Floating Window"]="swaymsg floating toggle"
-  ["SUPER + Space        │ Application Launcher (wofi)"]="swaymsg exec '$MENU'"
-  ["SUPER + R            │ Run Application Launcher (wofi)"]="swaymsg exec '$MENU'"
+  ["SUPER + V            │ Toggle Floating Window Borders"]="swaymsg exec ~/.config/sway/scripts/toggle-floating.sh"
+  ["SUPER + Space        │ Application Launcher (wofi)"]="swaymsg exec \"$MENU\""
+  ["SUPER + R            │ Run Application Launcher (wofi)"]="swaymsg exec \"$MENU\""
   ["SUPER + T            │ Open terminal(alacritty)"]="swaymsg exec alacritty"
-  ["SUPER + CTRL + F     │ Toggle Fullscreen (Maximize)"]="swaymsg fullscreen"
+  ["SUPER + F            │ Toggle Fullscreen"]="swaymsg fullscreen"
   ["SUPER + SHIFT + L    │ Lock Screen"]="swaymsg exec hyprlock"
   ["SUPER + SHIFT + Q    │ Power / Logout Menu (wlogout)"]="swaymsg exec 'wlogout -p layer-shell'"
   ["SUPER + SHIFT + B    │ Toggle Waybar Status Bar"]="swaymsg exec ~/.config/sway/scripts/toggle-waybar.sh"
   ["SUPER + CTRL + B     │ Toggle Systemwide Blur"]="swaymsg exec ~/.config/sway/scripts/toggle-blur.sh"
   ["SUPER + .            │ Open Emoji Picker (wofi-emoji)"]="swaymsg exec wofi-emoji"
-  ["SUPER + CTRL + C     │ Edit Sway Config (ghostty)"]="swaymsg exec \"ghostty -e bash -c 'cd ~/.config/sway/ && nvim ~/.config/sway/config'\""
+  ["SUPER + CTRL + C     │ Edit Sway Config (VSCodium)"]="swaymsg exec \"codium --new-window ~/msc\""
   ["SUPER + CTRL + 1     │ Toggle Caffeine (Prevent Sleep)"]="swaymsg exec ~/.config/sway/scripts/toggle-caffeine.sh"
   ["SUPER + CTRL + 2     │ Toggle Gamemode (Performance)"]="swaymsg exec ~/.config/sway/scripts/toggle-gamemode.sh"
   ["SUPER + CTRL + R     │ Reload Sway Config (Full)"]="swaymsg exec ~/.config/sway/scripts/reload-config.sh"
   ["SUPER + CTRL + W     │ Wallpaper Switcher"]="swaymsg exec '~/.config/sway/scripts/wallpaper-switcher.sh'"
   ["SUPER + CTRL + G     │ Live Wallpaper Switcher"]="swaymsg exec '~/.config/sway/scripts/live-wallpaper-switcher.sh'"
+  ["SUPER + CTRL + L     │ Toggle Light/Dark Mode"]="swaymsg exec ~/.config/sway/scripts/light-mode.sh"
 
   ["SUPER + ALT + E      │ File Manager (yazi terminal)"]="swaymsg exec 'kitty --app-id=yazi --class=yazi -e yazi'"
   ["SUPER + D            │ Open VSCode (codium)"]="swaymsg exec codium"
@@ -50,14 +55,16 @@ declare -A KEYBINDS=(
   ["SUPER + N            │ Toggle Notification Center"]="swaymsg exec 'swaync-client -t -sw'"
   ["SUPER + SHIFT + N    │ Toggle Do Not Disturb"]="swaymsg exec 'swaync-client -d -sw'"
   ["SUPER + H            │ Toggle Help Menu Screen"]="swaymsg exec 'kitty --app-id=sway_help --class=sway_help -e ~/.config/sway/scripts/help.sh'"
+  ["SUPER + O            │ Center Floating Window"]="swaymsg exec ~/.config/sway/scripts/centered-floating-window.sh"
   ["SUPER + I            │ Launch Sublime Text"]="swaymsg exec 'subl --launch-or-new-window'"
   ["SUPER + CTRL + P     │ Color Picker (hyprpicker)"]="swaymsg exec 'hyprpicker -a -f hex'"
   ["SUPER + Z            │ Zoom / Magnifier (wooz)"]="swaymsg exec 'wooz --zoom-in 25% --mouse-track --invert-scroll'"
-  ["SUPER + Arrows       │ Move Focus Between Windows"]="notify-send 'Help menu' 'Use SUPER + arrow keys to move focus'"
   ["Print                │ Screenshot Region (Save File)"]="swaymsg exec \"grim -g \\\"\$(slurp)\\\" ~/Pictures/Screenshots/\$(date +'%Y-%m-%d_%H-%M-%S').png\""
   ["SUPER + SHIFT + S    │ Screenshot Region (To Clipboard)"]="swaymsg exec \"grim -g \\\"\$(slurp)\\\" - | wl-copy\""
   ["SUPER + CTRL + S      │ Fullscreen Screenshot (Save File)"]="swaymsg exec \"grim ~/Pictures/Screenshots/\$(date +'%Y-%m-%d_%H-%M-%S').png\""
   ["SUPER + ALT + Return │ Scratchpad (kitty dropdown)"]="swaymsg exec ~/.config/sway/scripts/scratchpad-toggle.sh"
+  ["SUPER + Tab          │ Next Workspace"]="swaymsg workspace next"
+  ["SUPER + SHIFT + Tab  │ Previous Workspace"]="swaymsg workspace prev"
   ["SUPER + Scroll Wheel │ Cycle Active Workspaces Dynamically"]="notify-send \"Help menu\" \"Scroll mouse wheel while holding SUPER to shift workspaces\""
 )
 
@@ -96,5 +103,5 @@ SELECTION=$(for key in "${!KEYBINDS[@]}"; do echo "$key"; done | sort | fzf \
 # Extract and fire the command
 if [ -n "$SELECTION" ]; then
   COMMAND="${KEYBINDS[$SELECTION]}"
-  eval "$COMMAND"
+  bash -c -- "$COMMAND"
 fi
