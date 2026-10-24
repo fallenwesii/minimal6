@@ -2,7 +2,7 @@
 
 # Toggle systemwide blur by flipping the global wildcard opacity rules
 # in windowrules.conf (swayfx only blurs windows with opacity < 1).
-# Terminals are exempted by fixed rules and always stay at opacity 1.
+# This includes terminal windows and everything rendered inside them.
 #
 # The last ON opacity is remembered via the `# blur-preferred-opacity:`
 # marker line in windowrules.conf, so a value tuned by hand (e.g. for a
@@ -53,8 +53,7 @@ sed -i -E \
 # 1. Reload config so NEW windows get the new opacity
 swaymsg reload >/dev/null 2>&1
 
-# 2. Re-apply every opacity rule to EXISTING windows, in file order,
-#    so wildcard rules run first and terminal/special exemptions win
+# 2. Re-apply every opacity rule to EXISTING windows, in file order.
 grep -E '^\s*for_window .* opacity ' "$RULES" | while IFS= read -r line; do
   rule="${line#for_window }"
   swaymsg "$rule" >/dev/null 2>&1
