@@ -15,11 +15,11 @@ show_header() {
     gum style \
       --foreground 196 --border-foreground 196 --border double \
       --align center --width 50 --margin "1 2" --padding "2 4" \
-      "msc dotfiles" "Uninstall Wizard"
+      "minimal6 dotfiles" "Uninstall Wizard"
   else
     echo -e "${RED}"
     echo "=================================================="
-    echo "          MSC DOTFILES UNINSTALLER                "
+    echo "       MINIMAL6 DOTFILES UNINSTALLER              "
     echo "=================================================="
     echo -e "${NC}"
   fi
@@ -30,7 +30,7 @@ show_header
 DOTFILES_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 CONF_DIR="$HOME/.config"
 
-echo -e "${YELLOW}This script will remove symlinks, wallpapers, and scripts installed by msc.${NC}"
+echo -e "${YELLOW}This script will remove symlinks, wallpapers, and scripts installed by minimal6.${NC}"
 echo -e "${YELLOW}It will NOT uninstall any packages/applications.${NC}"
 echo ""
 read -p "Are you sure you want to proceed? (y/n): " proceed
@@ -68,7 +68,7 @@ undo_link() {
         echo -e "${GREEN}Restored $name from backup.${NC}"
       fi
     else
-      echo -e "${YELLOW}Skipping $target: Symlink does not point to msc dotfiles directory ($link_target).${NC}"
+      echo -e "${YELLOW}Skipping $target: Symlink does not point to minimal6 dotfiles directory ($link_target).${NC}"
     fi
   elif [[ -e "$target" ]]; then
     echo -e "${YELLOW}Skipping $target: It exists but is not a symbolic link.${NC}"
@@ -147,7 +147,7 @@ if [ ${#EXISTING_SUDOERS[@]} -gt 0 ]; then
     echo -e "${BLUE}Skipped removing sudoers rules.${NC}"
   fi
 else
-  echo -e "${BLUE}No msc sudoers rules found to remove.${NC}"
+  echo -e "${BLUE}No minimal6 sudoers rules found to remove.${NC}"
 fi
 
 # --- 7. Final Message ---

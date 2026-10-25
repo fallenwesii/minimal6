@@ -1,6 +1,6 @@
 # Packages
 
-A comprehensive list of packages required for the **msc** environment.
+A comprehensive list of packages required for the **minimal6** environment.
 
 ### Core System & Compositor
 - **swayfx-git(AUR)**: Sway, but with eye candy(compositor).

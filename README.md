@@ -1,7 +1,6 @@
-# msc
+# minimal6
 
-My swayfx configuration(msc).
-This is a port of my [minimal6](https://github.com/fallenwesii/minimal6) dotfiles to sway(swayfx), so if you value eye candy with flashy animation, it's worth checking it out.
+My swayfx configuration (minimal6). If you value eye candy with flashy animation, it's worth checking it out.
 
 ## ✨ Features
 
@@ -19,13 +18,13 @@ This is a port of my [minimal6](https://github.com/fallenwesii/minimal6) dotfile
 
 ## Screenshots
 
- ![msc](/screenshots/desktop.png)
+ ![minimal6](/screenshots/desktop.png)
 
 ## Setup
 
 ```bash
-git clone https://github.com/fallenwesii/msc.git
-cd msc
+git clone https://github.com/fallenwesii/minimal6.git
+cd minimal6
 chmod +x setup.sh && ./setup.sh
 ```
 
@@ -33,7 +32,7 @@ Installs packages (pacman + AUR), links configs, applies wallpaper and generates
 
 ## Uninstall
 
-To undo the symlinks, scripts, and theme overrides set up by msc (without uninstalling any applications):
+To undo the symlinks, scripts, and theme overrides set up by minimal6 (without uninstalling any applications):
 
 ```bash
 ./uninstall.sh

@@ -15,7 +15,7 @@ show_header() {
     gum style \
       --foreground 82 --border-foreground 82 --border double \
       --align center --width 50 --margin "1 2" --padding "2 4" \
-      "msc dotfiles" "Setup Wizard"
+      "minimal6 dotfiles" "Setup Wizard"
   else
     echo -e "${BLUE}"
     echo ""
@@ -86,7 +86,7 @@ fi
 # Warning for important components
 if ! command -v sddm &>/dev/null && ! command -v gdm &>/dev/null && ! command -v ly &>/dev/null; then
   echo -e "${RED}Warning: No Login Manager (SDDM/GDM/LY) detected.${NC}"
-  echo -e "${YELLOW}msc installs only the required packages but a login manager is recommended for a seamless experience.${NC}"
+  echo -e "${YELLOW}minimal6 installs only the required packages but a login manager is recommended for a seamless experience.${NC}"
   sleep 2
 fi
 
@@ -96,7 +96,7 @@ echo -e "Wait! i almost forgot, i have realised you haven't read the terms and c
 sleep 5
 clear
 echo -e "\v\v\t\t${NC}Terms and conditions${NC} "
-echo -e "\tAs a condition of using MSC dotfiles you agree to: "
+echo -e "\tAs a condition of using Minimal6 dotfiles you agree to: "
 echo -e "\t1. Tell everyone that you use linux"
 echo -e "\t2. Hate windows 11 as much as you can"
 echo -e "\v\v\v\v\v\v\v"
@@ -149,7 +149,7 @@ DOTFILES_DIR=$(pwd)
 CONF_DIR="$HOME/.config"
 mkdir -p "$HOME/.local/bin"
 
-# Detect whether a target already belongs to the msc dotfiles repo
+# Detect whether a target already belongs to the minimal6 dotfiles repo
 # (i.e. resolves inside $DOTFILES_DIR). Only this repo is treated as
 # dotfiles-managed; anything else is a foreign config and gets backed up.
 is_dotfiles_dir() {
@@ -212,7 +212,7 @@ for dir in "$DOTFILES_DIR/config"/*; do
 done
 
 # Clean up stale *.bak_* symlinks that were produced by previous buggy runs.
-# These are useless: they are just symlinks back into a msc repo, not
+# These are useless: they are just symlinks back into a minimal6 repo, not
 # real backups. Remove them so they stop accumulating.
 echo -e "${YELLOW}Removing stale dotfiles backup symlinks...${NC}"
 for bak in "$CONF_DIR"/*.bak_*; do
@@ -539,7 +539,7 @@ fi
 echo -e "${YELLOW}Setting up QT/Kvantum environment...${NC}"
 systemctl --user daemon-reload
 systemctl --user restart xdg-desktop-portal
-echo -e "${GREEN}QT/Kvantum environment configured (via 90-msc.conf) and systemd user manager reloaded.\nA reboot is recommended for Qt/Kvantum theming${NC}"
+echo -e "${GREEN}QT/Kvantum environment configured (via 90-minimal6.conf) and systemd user manager reloaded.\nA reboot is recommended for Qt/Kvantum theming${NC}"
 
 # --- 15. Final Message ---
 if command -v gum &>/dev/null; then
