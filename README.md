@@ -1,6 +1,6 @@
 # minimal6
 
-My swayfx configuration (minimal6). If you value eye candy with flashy animation, it's worth checking it out.
+A minimal swayfx dotfiles.
 
 ## ✨ Features
 
@@ -23,7 +23,7 @@ My swayfx configuration (minimal6). If you value eye candy with flashy animation
 ## Setup
 
 ```bash
-git clone https://github.com/fallenwesii/minimal6.git
+git clone  --depth 1 https://github.com/fallenwesii/minimal6.git
 cd minimal6
 chmod +x setup.sh && ./setup.sh
 ```
