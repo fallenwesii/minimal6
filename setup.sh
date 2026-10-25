@@ -145,16 +145,20 @@ echo -e "${YELLOW}Making scripts executable...${NC}"
 find . -name "*.sh" -exec chmod +x {} +
 
 # --- 6. Configuration & Symlinking ---
-DOTFILES_DIR=$(pwd)
+DOTFILES_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 CONF_DIR="$HOME/.config"
 mkdir -p "$HOME/.local/bin"
 
 # Detect whether a target already belongs to the minimal6 dotfiles repo
-# (i.e. resolves inside $DOTFILES_DIR). Only this repo is treated as
-# dotfiles-managed; anything else is a foreign config and gets backed up.
+# (i.e. resolves inside $DOTFILES_DIR or points to old msc path).
+# Only dotfiles-managed links get replaced without backing up.
 is_dotfiles_dir() {
   local dir=$1
-  [[ "$(readlink -f "$dir" 2>/dev/null)" == "$DOTFILES_DIR"* ]]
+  local resolved
+  resolved=$(readlink -f "$dir" 2>/dev/null)
+  local raw
+  raw=$(readlink "$dir" 2>/dev/null)
+  [[ "$resolved" == "$DOTFILES_DIR"* || "$raw" == *"/msc/"* || "$raw" == *"/minimal6/"* ]]
 }
 
 is_dotfiles_link() {
@@ -215,7 +219,7 @@ done
 # These are useless: they are just symlinks back into a minimal6 repo, not
 # real backups. Remove them so they stop accumulating.
 echo -e "${YELLOW}Removing stale dotfiles backup symlinks...${NC}"
-for bak in "$CONF_DIR"/*.bak_*; do
+for bak in "$CONF_DIR"/*.bak_* "$HOME"/.themes.bak_*; do
   [ -L "$bak" ] || continue
   if is_dotfiles_link "$bak"; then
     rm -f "$bak"

@@ -52,7 +52,7 @@ undo_link() {
     local abs_dotfiles_dir=$(realpath -m "$DOTFILES_DIR")
 
     # Only remove if it points inside our dotfiles directory
-    if [[ "$abs_link_target" == "$abs_dotfiles_dir"* ]]; then
+    if [[ "$abs_link_target" == "$abs_dotfiles_dir"* || "$link_target" == *"/msc/"* || "$link_target" == *"/minimal6/"* ]]; then
       echo -e "Removing symlink: ${BLUE}$target${NC} (points to $link_target)"
       rm "$target"
       echo -e "${GREEN}Removed symlink for $name.${NC}"
