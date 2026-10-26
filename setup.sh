@@ -28,7 +28,7 @@ show_header
 # --- 1. Package Lists ---
 PACMAN_PKGS=(
   "swayidle" "gammastep"
-  "xdg-desktop-portal-wlr" "xdg-desktop-portal-gtk" "waybar" "swaync" "wofi" "nwg-look"
+  "xdg-desktop-portal-wlr" "xdg-desktop-portal-gtk" "waybar" "swaync" "wofi"
   "fzf" "gum" "figlet" "grim" "slurp" "wl-clipboard" "cliphist"
   "brightnessctl" "pavucontrol" "polkit-gnome" "gvfs" "tuned" "jq"
   "xdg-utils" "git" "libnotify" "psmisc" "procps-ng" "iproute2"
@@ -378,13 +378,12 @@ echo -e "${YELLOW}Setting up themes...${NC}"
 read -p "Apply adw-gtk3 theme and generate dynamic colors with matugen? (y/n): " setup_themes
 if [[ "$setup_themes" == "y" || "$setup_themes" == "Y" ]]; then
 
-  # Flatpak theming
-  if command -v flatpak &>/dev/null; then
-    echo -e "${YELLOW}Allowing Flatpak apps to access themes, icons, and GTK 4.0 configuration...${NC}"
-    flatpak override --user --filesystem="$HOME"/.themes
-    flatpak override --user --filesystem="$HOME"/.icons
-    flatpak override --user --filesystem="$HOME"/.config/gtk-4.0
-    echo -e "${GREEN}Flatpak apps can now access themes, icons, and GTK 4.0 configuration.${NC}"
+  # Flatpak theming: the 3 grants + per-app GTK4 wiring for libadwaita apps.
+  # Single source of truth: flatpak-theming.sh (also usable standalone,
+  # see --help / theme-fix.md). Safe to re-run any time.
+  if command -v flatpak &>/dev/null && [ -f "$DOTFILES_DIR/flatpak-theming.sh" ]; then
+    echo -e "${YELLOW}Theming flatpak apps (grants + per-app wiring)...${NC}"
+    bash "$DOTFILES_DIR/flatpak-theming.sh"
   fi
 
   # Set adw-gtk3 theme and icons via gsettings
@@ -416,6 +415,9 @@ if [[ "$setup_themes" == "y" || "$setup_themes" == "Y" ]]; then
         ln -sf "$ADW_GTK3/colors.css" "$GTK3_CONF/colors.css"
       fi
       echo -e "${GREEN}GTK theme symlinks updated.${NC}"
+
+      # Flatpak GTK4 wiring (per-app symlinks for libadwaita apps) is handled
+      # by flatpak-theming.sh, which already ran earlier in this section.
     fi
   else
     echo -e "${YELLOW}Warning: $MATUGEN_WALLPAPER not found.${NC}"

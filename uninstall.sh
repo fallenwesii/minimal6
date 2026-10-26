@@ -125,7 +125,16 @@ if command -v flatpak &>/dev/null; then
   echo -e "\n${YELLOW}Cleaning up Flatpak theme overrides...${NC}"
   flatpak override --user --nofilesystem="$HOME/.themes" 2>/dev/null
   flatpak override --user --nofilesystem="$HOME/.icons" 2>/dev/null
+  flatpak override --user --nofilesystem="$HOME/.config/gtk-4.0" 2>/dev/null
   flatpak override --user --unset-env=GTK_THEME 2>/dev/null
+  # Remove per-app GTK4 config symlinks that point into ~/.themes,
+  # restoring each app's config dir to an empty state.
+  for cfg in "$HOME"/.var/app/*/config/gtk-4.0; do
+    if [ -L "$cfg" ] && [[ "$(readlink "$cfg")" == *"/.themes/"* ]]; then
+      rm "$cfg"
+      mkdir -p "$cfg"
+    fi
+  done
   echo -e "${GREEN}Flatpak overrides removed.${NC}"
 fi
 
