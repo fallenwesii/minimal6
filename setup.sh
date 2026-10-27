@@ -393,12 +393,32 @@ if [[ "$setup_themes" == "y" || "$setup_themes" == "Y" ]]; then
   gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
   echo -e "${GREEN}adw-gtk3-dark theme and FairyWren_adwaita_Dark icons applied.${NC}"
 
-  # Run matugen for dynamic coloring
+  # Apply the initial wallpaper and generate dynamic colors using the same
+  # awww -> matugen flow used by the wallpaper switcher. The matugen Sway
+  # reload hook is guarded in config/matugen/config.toml.
   MATUGEN_WALLPAPER="$HOME/Pictures/wallpapers/building.png"
   if [ -f "$MATUGEN_WALLPAPER" ]; then
-    echo -e "${BLUE}Generating dynamic colors with matugen...${NC}"
-    matugen -m dark image "$MATUGEN_WALLPAPER" --source-color-index 0
-    echo -e "${GREEN}Dynamic colors applied via matugen.${NC}"
+    APPLY_WALLPAPER="$DOTFILES_DIR/config/sway/scripts/apply-wallpaper.sh"
+    mkdir -p "$HOME/.cache"
+
+    if [[ "${XDG_CURRENT_DESKTOP,,}" == *sway* || "${DESKTOP_SESSION,,}" == *sway* ]] &&
+      [ -n "${SWAYSOCK:-}" ] && command -v swaymsg &>/dev/null && swaymsg -t get_version &>/dev/null; then
+      echo -e "${BLUE}Active Sway session detected; applying wallpaper and reloading after generation.${NC}"
+    else
+      echo -e "${YELLOW}SwayFX is not active; applying colors now, but awww may not be able to set the wallpaper.${NC}"
+    fi
+
+    if bash "$APPLY_WALLPAPER" "$MATUGEN_WALLPAPER"; then
+      if [[ "${XDG_CURRENT_DESKTOP,,}" == *sway* || "${DESKTOP_SESSION,,}" == *sway* ]] &&
+        [ -n "${SWAYSOCK:-}" ] && command -v swaymsg &>/dev/null && swaymsg -t get_version &>/dev/null; then
+        echo -e "${GREEN}Initial wallpaper and dynamic colors applied.${NC}"
+      else
+        echo -e "${GREEN}Dynamic colors generated.${NC}"
+        echo -e "${YELLOW}After logging into SwayFX, press Super + Ctrl + W to apply the wallpaper.${NC}"
+      fi
+    else
+      echo -e "${RED}Failed to apply the initial wallpaper and dynamic colors.${NC}"
+    fi
 
     # Re-run GTK symlinks now that .themes is in place and matugen has written colors
     echo -e "${BLUE}Re-linking GTK theme files...${NC}"
