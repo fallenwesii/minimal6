@@ -63,9 +63,17 @@ declare -A KEYBINDS=(
   ["SUPER + SHIFT + S    │ Screenshot Region (To Clipboard)"]="swaymsg exec \"grim -g \\\"\$(slurp)\\\" - | wl-copy\""
   ["SUPER + CTRL + S      │ Fullscreen Screenshot (Save File)"]="swaymsg exec \"grim ~/Pictures/Screenshots/\$(date +'%Y-%m-%d_%H-%M-%S').png\""
   ["SUPER + ALT + Return │ Scratchpad (kitty dropdown)"]="swaymsg exec ~/.config/sway/scripts/scratchpad-toggle.sh"
+  ["ALT + Tab            │ Next Window (Cycle Focus)"]="swaycycle"
   ["SUPER + Tab          │ Next Workspace"]="swaymsg workspace next"
   ["SUPER + SHIFT + Tab  │ Previous Workspace"]="swaymsg workspace prev"
   ["SUPER + Scroll Wheel │ Cycle Active Workspaces Dynamically"]="notify-send \"Help menu\" \"Scroll mouse wheel while holding SUPER to shift workspaces\""
+
+  # Window Navigation & Layout
+  ["SUPER + Arrows       │ Focus Window (Left/Down/Up/Right)"]="notify-send 'Navigation' 'Use Super + Arrow keys to focus windows'"
+  ["SUPER + SHIFT + Arrows │ Move Window (Left/Down/Up/Right)"]="notify-send 'Navigation' 'Use Super + Shift + Arrow keys to move window'"
+  ["SUPER + CTRL + Arrows  │ Resize Window"]="notify-send 'Resize' 'Use Super + Ctrl + Arrow keys to resize window'"
+  ["SUPER + CTRL + H     │ Split Container Horizontally"]="swaymsg splith"
+  ["SUPER + CTRL + V     │ Split Container Vertically"]="swaymsg splitv"
 )
 
 # Parse a color variable from palette.conf, returning a #RRGGBB hex string

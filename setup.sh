@@ -140,6 +140,23 @@ else
   echo -e "${GREEN}libadwaita-without-adwaita is already installed.${NC}"
 fi
 
+# Install swaycycle (binary from Codeberg release for window focus cycling)
+echo -e "${YELLOW}Checking for swaycycle...${NC}"
+if [ ! -f "/usr/bin/swaycycle" ]; then
+  echo -e "${BLUE}Downloading swaycycle binary from Codeberg...${NC}"
+  SWAYCYCLE_URL="https://codeberg.org/scip/swaycycle/releases/download/v0.3.2/swaycycle_Linux_x86_64_v0.3.2"
+  TMP_SWAYCYCLE="/tmp/swaycycle"
+  if curl -fL --connect-timeout 15 --max-time 120 "$SWAYCYCLE_URL" -o "$TMP_SWAYCYCLE" && [ -s "$TMP_SWAYCYCLE" ]; then
+    sudo install -m 755 "$TMP_SWAYCYCLE" /usr/bin/swaycycle
+    rm -f "$TMP_SWAYCYCLE"
+    echo -e "${GREEN}swaycycle installed to /usr/bin/swaycycle successfully.${NC}"
+  else
+    echo -e "${RED}Failed to download swaycycle.${NC}"
+  fi
+else
+  echo -e "${GREEN}swaycycle is already installed in /usr/bin.${NC}"
+fi
+
 # --- 5. Make all scripts executable ---
 echo -e "${YELLOW}Making scripts executable...${NC}"
 find . -name "*.sh" -exec chmod +x {} +
