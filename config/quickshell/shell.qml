@@ -19,6 +19,13 @@ ShellRoot {
     property string matugenColorsPath: "/home/wesii/.config/quickshell/generated/colors.json"
     property var matugenColors: ({})
 
+    // User toggles (rounded corners / analog clock), persisted to ~/.cache
+    // so they survive quickshell restarts (matugen's post_hook relaunches
+    // qs on every wallpaper change). scripts/toggle-*.sh flip these files;
+    // the FileViews below watch them and apply changes instantly.
+    property bool cornersEnabled: true
+    property bool clockEnabled: true
+
     property string osdIcon: "volume"
     property string osdLabel: "Volume"
     property real osdValue: Pipewire.defaultAudioSink?.audio.volume ?? 0
@@ -156,6 +163,30 @@ ShellRoot {
         Component.onCompleted: shell.loadMatugenColors()
     }
 
+    // Rounded-corners toggle state (~/.cache/quickshell-corners: "0"/"1")
+    FileView {
+        id: cornersStateFile
+        path: Quickshell.env("HOME") + "/.cache/quickshell-corners"
+        preload: true
+        watchChanges: true
+        printErrors: false
+
+        onFileChanged: reload()
+        onLoaded: shell.cornersEnabled = text().trim() !== "0"
+    }
+
+    // Analog clock toggle state (~/.cache/quickshell-clock: "0"/"1")
+    FileView {
+        id: clockStateFile
+        path: Quickshell.env("HOME") + "/.cache/quickshell-clock"
+        preload: true
+        watchChanges: true
+        printErrors: false
+
+        onFileChanged: reload()
+        onLoaded: shell.clockEnabled = text().trim() !== "0"
+    }
+
     FileView {
         id: brightness
         path: "/sys/class/backlight/" + shell.backlightDevice + "/actual_brightness"
@@ -202,7 +233,7 @@ ShellRoot {
             PanelWindow {
                 id: corners
                 screen: screenScope.modelData
-                visible: !hasFullscreen
+                visible: !hasFullscreen && shell.cornersEnabled
                 color: "transparent"
                 implicitWidth: screen.width
                 implicitHeight: screen.height
@@ -365,6 +396,7 @@ ShellRoot {
     PanelWindow {
         id: clockWindow
         screen: Quickshell.screens[0]
+        visible: shell.clockEnabled
 
         // Background layer: above wallpaper, below normal windows
         WlrLayershell.layer: WlrLayer.Background
