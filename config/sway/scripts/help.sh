@@ -31,6 +31,7 @@ declare -A KEYBINDS=(
   ["SUPER + R            │ Run Application Launcher (wofi)"]="swaymsg exec \"$MENU\""
   ["SUPER + T            │ Open terminal(alacritty)"]="swaymsg exec alacritty"
   ["SUPER + F            │ Toggle Fullscreen"]="swaymsg fullscreen"
+  ["SUPER + CTRL + F     │ Toggle Maximize (Preserve Waybar)"]="swaymsg exec ~/.config/sway/scripts/toggle-maximize.sh"
   ["SUPER + SHIFT + L    │ Lock Screen"]="swaymsg exec hyprlock"
   ["SUPER + SHIFT + Q    │ Power / Logout Menu (wlogout)"]="swaymsg exec 'wlogout -p layer-shell'"
   ["SUPER + SHIFT + B    │ Toggle Waybar Status Bar"]="swaymsg exec ~/.config/sway/scripts/toggle-waybar.sh"
