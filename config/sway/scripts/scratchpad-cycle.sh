@@ -20,7 +20,11 @@ APPEARANCE="$HOME/.config/sway/conf/appearance.conf"
 FLOAT_W=$(awk '/^default_floating_border/{print $3}' "$APPEARANCE" 2>/dev/null)
 
 if [ "$COUNT" -eq 1 ]; then
-  swaymsg "[con_id=${WIN_IDS[0]}] scratchpad show, resize set 950 600, move position center, border pixel ${FLOAT_W:-3}"
+  swaymsg "[con_id=${WIN_IDS[0]}] scratchpad show"
+  sleep 0.05
+  swaymsg "[con_id=${WIN_IDS[0]}] resize set 950 600"
+  swaymsg "[con_id=${WIN_IDS[0]}] move position center"
+  swaymsg "[con_id=${WIN_IDS[0]}] border pixel ${FLOAT_W:-3}"
   exit 0
 fi
 
@@ -36,4 +40,8 @@ for i in "${!WIN_IDS[@]}"; do
   fi
 done
 
-swaymsg "[con_id=$NEXT_ID] scratchpad show, resize set 950 600, move position center, border pixel ${FLOAT_W:-3}"
+swaymsg "[con_id=$NEXT_ID] scratchpad show"
+sleep 0.05
+swaymsg "[con_id=$NEXT_ID] resize set 950 600"
+swaymsg "[con_id=$NEXT_ID] move position center"
+swaymsg "[con_id=$NEXT_ID] border pixel ${FLOAT_W:-3}"
