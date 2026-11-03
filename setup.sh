@@ -259,6 +259,12 @@ confirm_and_link "$DOTFILES_DIR/.themes" "$HOME/.themes" ".themes"
 # .bashrc does not work with symlinks: copy instead
 confirm_and_copy "$DOTFILES_DIR/.bashrc" "$HOME/.bashrc" ".bashrc"
 
+# Quicksettings TUI: `minimal6` in ~/.local/bin (also used by Super + S)
+if [ -f "$DOTFILES_DIR/bin/minimal6" ]; then
+  chmod +x "$DOTFILES_DIR/bin/minimal6" 2>/dev/null
+  confirm_and_link "$DOTFILES_DIR/bin/minimal6" "$HOME/.local/bin/minimal6" "quicksettings menu"
+fi
+
 # Kvantum themes
 if command -v kvantummanager &>/dev/null; then
   confirm_and_link "$DOTFILES_DIR/kvantum-themes" "$HOME/.config/Kvantum" "kvantum-themes"

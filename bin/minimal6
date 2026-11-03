@@ -1,0 +1,1361 @@
+#!/usr/bin/env python3
+"""minimal6 quicksettings — TUI control panel for the minimal6 SwayFX dotfiles.
+
+Every setting is applied through the same script or config file the desktop
+already uses, so the menu can never drift from the keybinds:
+
+  appearance   -> conf/appearance.conf + scripts/reload-config.sh
+  wallpaper    -> scripts/wallpaper-switcher.sh (GTK picker -> awww -> matugen)
+  live paper   -> scripts/live-wallpaper-switcher.sh
+  theme mode   -> scripts/light-mode.sh
+  toggles      -> scripts/toggle-{caffeine,gamemode,blur,waybar}.sh
+                  quickshell/scripts/toggle-{corners,clock}.sh
+                  waybar/scripts/hyprsunset.sh (night mode)
+  monitors     -> swaymsg + a managed block in conf/monitors.conf
+  default apps -> conf/programs.conf + reload
+
+Bound to Super+S in conf/keybinds.conf.
+
+Usage:
+  minimal6              interactive menu
+  minimal6 --status     print the state this menu reads (no changes)
+  minimal6 --help       this text
+"""
+
+import getpass
+import json
+import os
+import re
+import select
+import shlex
+import shutil
+import subprocess
+import sys
+import termios
+import time
+import tty
+
+HOME = os.path.expanduser("~")
+SWAY_DIR = os.path.join(HOME, ".config", "sway")
+CONF_DIR = os.path.join(SWAY_DIR, "conf")
+APPEARANCE_CONF = os.path.join(CONF_DIR, "appearance.conf")
+PROGRAMS_CONF = os.path.join(CONF_DIR, "programs.conf")
+MONITORS_CONF = os.path.join(CONF_DIR, "monitors.conf")
+WINDOWRULES_CONF = os.path.join(CONF_DIR, "windowrules.conf")
+PALETTE_CONF = os.path.join(SWAY_DIR, "palette.conf")
+SCRIPTS_DIR = os.path.join(SWAY_DIR, "scripts")
+QUICKSHELL_SCRIPTS = os.path.join(HOME, ".config", "quickshell", "scripts")
+WAYBAR_SCRIPTS = os.path.join(HOME, ".config", "waybar", "scripts")
+WALLPAPERS_DIR = os.path.join(HOME, "Pictures", "wallpapers")
+LIGHT_WALLPAPERS_DIR = os.path.join(WALLPAPERS_DIR, "light-mode")
+
+# Sway/session state. The shell scripts use the same location, so the menu and
+# the keybinds always agree on whether caffeine/gamemode are on.
+RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
+CAFFEINE_LOCK = os.path.join(RUNTIME_DIR, "sway-caffeine")
+GAMEMODE_LOCK = os.path.join(RUNTIME_DIR, "sway-gamemode")
+MODE_FILE = os.path.join(HOME, ".cache", "matugen_mode")
+
+IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
+TRANSFORMS = ["normal", "90", "180", "270",
+              "flipped", "flipped-90", "flipped-180", "flipped-270"]
+SCALES = ["1", "1.25", "1.5", "1.75", "2"]
+
+MANAGED_START = "# >>> minimal6 output settings (managed by `minimal6`) >>>"
+MANAGED_END = "# <<< minimal6 output settings <<<"
+
+RST = "\033[0m"
+BOLD = "\033[1m"
+CLR = "\033[2J\033[H"
+HIDE_CURSOR = "\033[?25l"
+SHOW_CURSOR = "\033[?25h"
+# Synchronized update (DEC 2026): kitty/alacritty/foot/ghostty repaint the
+# frame in one go instead of showing a clear-then-draw flash.
+SYNC_ON = "\033[?2026h"
+SYNC_OFF = "\033[?2026l"
+
+
+# ── Small helpers ────────────────────────────────────────────────────────────
+
+def readf(path):
+    try:
+        with open(path) as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+def writef(path, content):
+    """Write via a temp file + rename so a crash never truncates a config."""
+    parent = os.path.dirname(path) or "."
+    os.makedirs(parent, exist_ok=True)
+    tmp = f"{path}.tmp.{os.getpid()}"
+    with open(tmp, "w") as f:
+        f.write(content)
+    os.replace(tmp, path)
+
+
+def run(cmd, **kwargs):
+    """Run a command, never blocking on inherited pipes (daemons)."""
+    try:
+        return subprocess.run(cmd, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL, **kwargs)
+    except OSError:
+        return None
+
+
+def run_ok(cmd):
+    proc = run(cmd)
+    return bool(proc) and proc.returncode == 0
+
+
+def run_out(cmd):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True,
+                              timeout=20).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def spawn(cmd):
+    try:
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+        return True
+    except OSError:
+        return False
+
+
+def notify(title, body=""):
+    args = ["notify-send", "-a", "minimal6"]
+    args += [title, body] if body else [title]
+    run(args)
+
+
+def in_sway():
+    return bool(os.environ.get("SWAYSOCK")) and shutil.which("swaymsg") is not None
+
+
+def sway_ok(*args):
+    return in_sway() and run_ok(["swaymsg", *args])
+
+
+def script(name):
+    return os.path.join(SCRIPTS_DIR, name)
+
+
+def run_script(path, *args):
+    if not os.path.exists(path):
+        return False
+    return run_ok(["bash", path, *args])
+
+
+def delegate(path, *args):
+    """Fire a long-running script so it survives the menu/terminal closing.
+
+    Mirrors what the keybinds do (swaymsg exec); falls back to a detached
+    process when there is no Sway IPC.
+    """
+    if not os.path.exists(path):
+        return False
+    if in_sway():
+        cmd = " ".join(shlex.quote(p) for p in (path, *args))
+        return sway_ok("exec", cmd)
+    return spawn(["bash", path, *args])
+
+
+def pidof(name):
+    return run_out(["pgrep", "-x", name]) != ""
+
+
+def wait_for(predicate, want, tries=15, delay=0.1):
+    for _ in range(tries):
+        if bool(predicate()) == want:
+            return True
+        time.sleep(delay)
+    return bool(predicate()) == want
+
+
+# ── Colors ───────────────────────────────────────────────────────────────────
+
+def get_color(name, fallback):
+    colors_file = os.path.join(HOME, ".config", "quickshell",
+                               "generated", "colors.json")
+    raw = readf(colors_file)
+    if raw:
+        try:
+            md3 = json.loads(raw).get("md3", {})
+            if name in md3:
+                return md3[name].lstrip("#").lower()[:6]
+        except (ValueError, AttributeError):
+            pass
+    m = re.search(rf'^\${re.escape(name)}\s*=\s*rgba\(([0-9a-fA-F]{{6}})',
+                  readf(PALETTE_CONF), re.M)
+    if m:
+        return m.group(1).lower()
+    return fallback
+
+
+def get_primary_color():
+    return get_color("primary", "ffb4ac")
+
+
+def hex_to_rgb(h):
+    h = h.lstrip("#")
+    return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+
+def luminance(h):
+    r, g, b = hex_to_rgb(h)
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0
+
+
+def brighten(h, factor=0.45):
+    """Blend toward white — always lighter than the input color."""
+    r, g, b = hex_to_rgb(h)
+    return (f"{int(r + (255 - r) * factor):02x}"
+            f"{int(g + (255 - g) * factor):02x}"
+            f"{int(b + (255 - b) * factor):02x}")
+
+
+def contrast(a, b):
+    hi, lo = sorted((luminance(a), luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def get_selection_color(primary=None):
+    """Cursor color: brighter than primary, which every other line uses.
+
+    On a transparent terminal the wallpaper shows through, so derived dim
+    shades (they land on outline/outline_variant) can vanish. Everything is
+    primary; the selected row uses MD3's bright primary (primary_fixed).
+    In a light theme primary_fixed is almost the background, so fall back to
+    whichever brighter candidate keeps more contrast against the background.
+    """
+    primary = primary or get_primary_color()
+    base = luminance(primary)
+    bg = get_color("background", "1a1110")
+    candidates = [c for c in (get_color("primary_fixed", ""), brighten(primary))
+                  if c and luminance(c) > base + 0.02]
+    if not candidates:
+        return brighten(primary)
+    return max(candidates, key=lambda c: contrast(c, bg))
+
+
+def c_fg(h):
+    r, g, b = hex_to_rgb(h)
+    return f"\033[38;2;{r};{g};{b}m"
+
+
+def term_size():
+    size = shutil.get_terminal_size(fallback=(80, 24))
+    return max(1, size.lines), max(1, size.columns)
+
+
+def fit(text, width):
+    """Trim plain text so a row can never wrap and push the frame over."""
+    if width <= 0 or len(text) <= width:
+        return text
+    return text[:max(0, width - 1)] + "…"
+
+
+def clear():
+    sys.stdout.write(CLR)
+    sys.stdout.flush()
+
+
+_last_frame = []
+
+
+def screen_start():
+    """Take the screen over once: clear, hide the cursor, forget the frame."""
+    global _last_frame
+    _last_frame = []
+    sys.stdout.write(CLR + HIDE_CURSOR)
+    sys.stdout.flush()
+
+
+def screen_end():
+    """Hand the screen back with a visible cursor."""
+    global _last_frame
+    _last_frame = []
+    sys.stdout.write(SHOW_CURSOR)
+    sys.stdout.flush()
+
+
+def draw(lines):
+    """Repaint the complete frame as one atomic update.
+
+    The synchronized update keeps the clear-and-redraw from visibly flashing.
+    Clearing the canvas first is important when a new frame is shorter than the
+    previous one: otherwise terminal rows from the old menu can remain visible
+    above or below the current menu after a value is changed.
+    """
+    global _last_frame
+    height, _width = term_size()
+    lines = list(lines)[:height]
+    out = [SYNC_ON, "\033[2J", "\033[H"]
+    for i, line in enumerate(lines):
+        last = i == len(lines) - 1
+        out.append(line)
+        if not last:
+            out.append("\r\n")
+    out.append(SYNC_OFF)
+    sys.stdout.write("".join(out))
+    sys.stdout.flush()
+    _last_frame = lines
+
+
+# ── Terminal input ───────────────────────────────────────────────────────────
+
+def get_key():
+    if not sys.stdin.isatty():
+        try:
+            ch = sys.stdin.read(1)
+        except (OSError, ValueError):
+            ch = ""
+        if not ch or ch in ("q", "\x1b"):
+            return "ESC"
+        if ch in ("\n", "\r"):
+            return "ENTER"
+        return ch
+
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)
+        b = os.read(fd, 1)
+        if not b:
+            return "ESC"
+        if b == b"\x1b":
+            ready, _, _ = select.select([fd], [], [], 0.05)
+            if ready:
+                b2 = os.read(fd, 1)
+                if b2 in (b"[", b"O"):
+                    ready2, _, _ = select.select([fd], [], [], 0.05)
+                    if ready2:
+                        b3 = os.read(fd, 1)
+                        if b3 == b"A":
+                            return "UP"
+                        if b3 == b"B":
+                            return "DOWN"
+                        if b3 == b"C":
+                            return "RIGHT"
+                        if b3 == b"D":
+                            return "LEFT"
+            return "ESC"
+        if b in (b"\r", b"\n"):
+            return "ENTER"
+        if b == b"\x03":
+            raise KeyboardInterrupt
+        if b in (b"\x7f", b"\x08"):
+            return "BACK"
+        return b.decode("utf-8", errors="ignore")
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+
+def prompt(text):
+    """Cooked-mode line input (get_key restores the terminal after each read)."""
+    global _last_frame
+    sys.stdout.write(SHOW_CURSOR)
+    sys.stdout.flush()
+    try:
+        return input(f"{c_fg(get_primary_color())}{text}{RST}").strip()
+    except (EOFError, KeyboardInterrupt):
+        return ""
+    finally:
+        sys.stdout.write(HIDE_CURSOR)
+        sys.stdout.flush()
+        # Typing echoed over the frame, so the next draw must repaint it all.
+        _last_frame = []
+
+
+_BANNER = None
+
+
+def banner_lines(primary, width=None):
+    global _BANNER
+    if _BANNER is None:
+        try:
+            import pyfiglet
+            fig = pyfiglet.figlet_format("minimal6", font="slant")
+        except ImportError:
+            fig = "\n  minimal6\n"
+        _BANNER = [line for line in fig.splitlines() if line.strip()]
+    lines = [fit(line, width) for line in _BANNER] if width else _BANNER
+    return [f"{c_fg(primary)}{line}{RST}" for line in lines]
+
+
+# ── Generic pickers ──────────────────────────────────────────────────────────
+
+def _window(count, sel, view_size):
+    if count <= view_size:
+        return 0, count
+    start = max(0, min(sel - view_size // 2, count - view_size))
+    return start, min(count, start + view_size)
+
+
+def list_picker(title, items, primary, subtitle=None, view_size=10,
+                start=0, back_label="Back", footer=None):
+    """Arrow-key menu. Returns the selected index or None on ESC."""
+    if not items:
+        return None
+    sel = max(0, min(start, len(items) - 1))
+    cursor = get_selection_color(primary)
+    while True:
+        height, width = term_size()
+        banner = banner_lines(primary, width)
+        # rows below the banner: small banner gap + title (+ subtitle) + items
+        # + blank + hint
+        blank_after = 1
+        headline_rows = (1 if title else 0) + (1 if subtitle else 0)
+        before_items = 1 if headline_rows else 0
+        after_items = blank_after
+        hint_rows = 1
+        total = headline_rows + before_items + after_items + hint_rows
+        visible = max(1, min(view_size, height - len(banner) - total))
+
+        # Leave one terminal row between the banner and heading. An empty title
+        # is used by the top-level menu, so do not emit a phantom title row.
+        lines = list(banner)
+        if title or subtitle:
+            lines.append("")
+        if title:
+            lines.append(f"{c_fg(primary)}{BOLD}{fit(title, width)}{RST}")
+        if subtitle:
+            lines.append(f"{c_fg(primary)}{fit(subtitle, width)}{RST}")
+        lines.append("")
+
+        first, last = _window(len(items), sel, visible)
+        for i in range(first, last):
+            row = items[i]
+            if i == sel:
+                lines.append(f"{c_fg(cursor)}{BOLD}{fit('  • ' + row, width)}{RST}")
+            else:
+                lines.append(f"{c_fg(primary)}{fit('    ' + row, width)}{RST}")
+
+        lines.append("")
+        hint = footer or (f"ESC: {back_label}  ENTER: Select  ↑↓: Navigate")
+        lines.append(f"  {c_fg(primary)}{fit(hint, width - 2)}{RST}")
+        draw(lines)
+
+        key = get_key()
+        if key in ("UP", "k"):
+            sel = (sel - 1) % len(items)
+        elif key in ("DOWN", "j"):
+            sel = (sel + 1) % len(items)
+        elif key == "ENTER":
+            return sel
+        elif key == "ESC":
+            return None
+        elif key.isdigit() and len(items) <= 9 and 1 <= int(key) <= len(items):
+            return int(key) - 1
+
+
+# ── Appearance ───────────────────────────────────────────────────────────────
+
+APPEARANCE_KEYS = {
+    "rounding": ("corner_radius", r"(corner_radius\s+)\d+"),
+    "gaps_in": ("gaps inner", r"(gaps inner\s+)\d+"),
+    "gaps_out": ("gaps outer", r"(gaps outer\s+)\d+"),
+    "border_size": ("default_border pixel", r"(default_border pixel\s+)\d+"),
+}
+
+
+def current_appearance(key):
+    pattern = APPEARANCE_KEYS[key][1]
+    m = re.search(pattern, readf(APPEARANCE_CONF))
+    return int(m.group(0).split()[-1]) if m else None
+
+
+def update_appearance(cfg_key, value):
+    if cfg_key not in APPEARANCE_KEYS:
+        return False
+    hkey, pattern = APPEARANCE_KEYS[cfg_key]
+    content = readf(APPEARANCE_CONF)
+    if re.search(pattern, content):
+        content = re.sub(pattern, rf"\g<1>{value}", content)
+    else:
+        content = content.rstrip("\n") + f"\n{hkey} {value}\n"
+    if not content.endswith("\n"):
+        content += "\n"
+    writef(APPEARANCE_CONF, content)
+    run_script(script("reload-config.sh"))
+    return True
+
+
+def number_picker(primary, title, cfg_key, lo, hi):
+    values = list(range(lo, hi + 1))
+    current = current_appearance(cfg_key)
+    start = values.index(current) if current is not None and current in values else 0
+    labels = [f"{v}   ✓" if v == current else str(v) for v in values]
+    value = list_picker(title, labels, primary, start=start, view_size=9,
+                        subtitle=f"current: {current if current is not None else '?'}"
+)
+    if value is None:
+        return
+    value = values[value]
+    if update_appearance(cfg_key, str(value)):
+        notify(f"{title} set to {value}")
+    else:
+        notify(f"Could not change {title.lower()}")
+
+def current_wallpaper_name():
+    m = re.search(r"^\$image\s*=\s*(.+)$", readf(PALETTE_CONF), re.M)
+    return os.path.basename(m.group(1).strip()) if m else ""
+
+
+def wallpaper_ui(primary):
+    """Open the wallpaper picker window (same GTK app as the live picker).
+
+    The picker owns the thumbnail grid and the awww -> matugen hand-off, so
+    there is no second in-menu copy of that logic left to drift.
+    """
+    picker = script("wallpaper-switcher.sh")
+    if not os.path.exists(picker):
+        notify("Wallpaper picker not found", picker)
+        return
+    if not os.path.isdir(WALLPAPERS_DIR):
+        notify("Wallpapers directory not found", WALLPAPERS_DIR)
+        return
+    if delegate(picker):
+        notify("Opening wallpaper picker")
+    else:
+        notify("Could not open wallpaper picker", picker)
+
+
+def theme_mode():
+    mode = readf(MODE_FILE).strip()
+    return mode or "dark"
+
+
+def has_wallpapers(directory):
+    try:
+        return any(f.lower().endswith(IMAGE_EXTS)
+                   for f in os.listdir(directory))
+    except OSError:
+        return False
+
+
+def theme_menu(primary):
+    current = theme_mode()
+    labels = ["Light mode", "Dark mode"]
+    start = 0 if current == "light" else 1
+    labels = [f"{label}   ✓" if label.split()[0].lower() == current else label
+              for label in labels]
+    choice = list_picker("Theme mode", labels, primary, start=start,
+                         subtitle=f"current: {theme_mode()}")
+    if choice is None:
+        return
+    target = "light" if choice == 0 else "dark"
+    if target == current:
+        notify(f"Already in {target} mode")
+        return
+    # light-mode.sh bails out when its wallpaper folder is empty, and the
+    # delegated run is async — check first so the menu cannot claim success.
+    if target == "light" and not has_wallpapers(LIGHT_WALLPAPERS_DIR):
+        notify("No light wallpapers", f"Add images to {LIGHT_WALLPAPERS_DIR}")
+        return
+    # light-mode.sh regenerates every color; run it detached like the keybind.
+    if delegate(script("light-mode.sh")):
+        notify(f"Switching to {target} mode",
+               "Wallpaper and colors regenerate in a few seconds")
+    else:
+        notify(f"Could not switch to {target} mode",
+               "Is ~/.config/sway/scripts/light-mode.sh present?")
+
+
+def appearance_menu(primary):
+    items = [
+        "Wallpaper",
+        "Live wallpaper",
+        "Rounding",
+        "Gaps in",
+        "Gaps out",
+        "Border size",
+        "Theme mode",
+    ]
+    while True:
+        choice = list_picker("Appearance", items, primary,
+                            subtitle="Images, layout metrics and theme mode")
+        if choice is None:
+            return primary
+        if choice == 0:
+            wallpaper_ui(primary)
+        elif choice == 1:
+            if delegate(script("live-wallpaper-switcher.sh")):
+                notify("Opening live wallpaper picker")
+            else:
+                notify("Live wallpaper picker not found")
+        elif choice == 2:
+            number_picker(primary, "Rounding", "rounding", 0, 19)
+        elif choice == 3:
+            number_picker(primary, "Gaps in", "gaps_in", 0, 20)
+        elif choice == 4:
+            number_picker(primary, "Gaps out", "gaps_out", 0, 30)
+        elif choice == 5:
+            number_picker(primary, "Border size", "border_size", 0, 6)
+        elif choice == 6:
+            theme_menu(primary)
+        primary = get_primary_color()
+
+
+# ── Toggles ──────────────────────────────────────────────────────────────────
+
+def dnd_status():
+    return run_out(["swaync-client", "-D"]).strip() == "true"
+
+
+def set_dnd(want):
+    return run_ok(["swaync-client", "-dn" if want else "-df"]) and \
+        wait_for(dnd_status, want)
+
+
+def caffeine_status():
+    return os.path.exists(CAFFEINE_LOCK)
+
+
+def set_caffeine(want):
+    if caffeine_status() == want:
+        return True
+    return run_script(script("toggle-caffeine.sh")) and \
+        wait_for(caffeine_status, want)
+
+
+def gamemode_status():
+    return os.path.exists(GAMEMODE_LOCK)
+
+
+def set_gamemode(want):
+    if gamemode_status() == want:
+        return True
+    return run_script(script("toggle-gamemode.sh")) and \
+        wait_for(gamemode_status, want)
+
+
+def blur_status():
+    m = re.search(r'for_window\s+\[app_id="\.\*"\]\s+opacity\s+([0-9.]+)',
+                  readf(WINDOWRULES_CONF))
+    return bool(m) and float(m.group(1)) < 1.0
+
+
+def set_blur(want):
+    if blur_status() == want:
+        return True
+    return run_script(script("toggle-blur.sh")) and \
+        wait_for(blur_status, want, tries=25)
+
+
+def waybar_status():
+    return pidof("waybar")
+
+
+def set_waybar(want):
+    if waybar_status() == want:
+        return True
+    return run_script(script("toggle-waybar.sh")) and \
+        wait_for(waybar_status, want, tries=25)
+
+
+def quickshell_status(state_file):
+    # Missing file means "on" (matches shell.qml's initial value).
+    return readf(os.path.join(HOME, ".cache", state_file)).strip() != "0"
+
+
+def corners_status():
+    return quickshell_status("quickshell-corners")
+
+
+def set_corners(want):
+    if corners_status() == want:
+        return True
+    return run_script(os.path.join(QUICKSHELL_SCRIPTS, "toggle-corners.sh")) and \
+        wait_for(corners_status, want)
+
+
+def night_light_status():
+    # Same detector the waybar module uses: gammastep running == night mode on.
+    return pidof("gammastep")
+
+
+def set_night_light(want):
+    if night_light_status() == want:
+        return True
+    if not shutil.which("gammastep"):
+        notify("Night mode unavailable",
+               "Install gammastep (the waybar module uses it)")
+        return False
+    script_path = os.path.join(WAYBAR_SCRIPTS, "hyprsunset.sh")
+    if not run_script(script_path, "toggle"):
+        return False
+    return wait_for(night_light_status, want, tries=25)
+
+
+def clock_status():
+    return quickshell_status("quickshell-clock")
+
+
+def set_clock(want):
+    if clock_status() == want:
+        return True
+    return run_script(os.path.join(QUICKSHELL_SCRIPTS, "toggle-clock.sh")) and \
+        wait_for(clock_status, want)
+
+
+TOGGLES = [
+    ("Do Not Disturb", dnd_status, set_dnd),
+    ("Caffeine", caffeine_status, set_caffeine),
+    ("Gamemode", gamemode_status, set_gamemode),
+    ("Night mode", night_light_status, set_night_light),
+    ("Systemwide blur", blur_status, set_blur),
+    ("Waybar", waybar_status, set_waybar),
+    ("Rounded screen corners", corners_status, set_corners),
+    ("Clock widget", clock_status, set_clock),
+]
+
+
+def toggle_ui(primary, name, status_fn, set_fn):
+    while True:
+        current = bool(status_fn())
+        labels = ["On", "Off"]
+        choice = list_picker(name, labels, primary,
+                             subtitle=f"status: {'on' if current else 'off'}",
+                             start=0 if current else 1)
+        if choice is None:
+            return
+        want = choice == 0
+        if want == current:
+            notify(f"{name}: {'on' if want else 'off'}",
+                   "No change needed")
+            return
+        if set_fn(want):
+            notify(f"{name}: {'on' if want else 'off'}")
+        else:
+            notify(f"{name}: failed",
+                   f"Could not turn {'on' if want else 'off'}; check the script and logs")
+            time.sleep(0.8)
+        return
+
+
+def toggles_menu(primary):
+    while True:
+        labels = [f"{name}   [{'on' if status_fn() else 'off'}]"
+                  for name, status_fn, _ in TOGGLES]
+        choice = list_picker("Toggles", labels, primary,
+                             subtitle="Same state the keybinds use")
+        if choice is None:
+            return
+        name, status_fn, set_fn = TOGGLES[choice]
+        toggle_ui(primary, name, status_fn, set_fn)
+
+
+# ── Connectivity ─────────────────────────────────────────────────────────────
+
+def nmcli_fields(line):
+    """Split nmcli -t output on unescaped ':' and unescape \\: / \\\\."""
+    fields, cur, i = [], [], 0
+    while i < len(line):
+        ch = line[i]
+        if ch == "\\" and i + 1 < len(line):
+            cur.append(line[i + 1])
+            i += 2
+            continue
+        if ch == ":":
+            fields.append("".join(cur))
+            cur = []
+            i += 1
+            continue
+        cur.append(ch)
+        i += 1
+    fields.append("".join(cur))
+    return fields
+
+
+def wifi_device():
+    for line in run_out(["nmcli", "-t", "-f", "DEVICE,TYPE", "device"]).splitlines():
+        parts = nmcli_fields(line)
+        if len(parts) == 2 and parts[1] == "wifi":
+            return parts[0]
+    return ""
+
+
+def wifi_enabled():
+    return run_out(["nmcli", "radio", "wifi"]) == "enabled"
+
+
+def wifi_current():
+    for line in run_out(["nmcli", "-t", "-f", "ACTIVE,SSID", "device", "wifi"]).splitlines():
+        parts = nmcli_fields(line)
+        if len(parts) >= 2 and parts[0] == "yes":
+            return parts[1]
+    return ""
+
+
+def wifi_status_line():
+    if not wifi_enabled():
+        return "wifi off"
+    ssid = wifi_current()
+    return f"connected to {ssid}" if ssid else "wifi on, not connected"
+
+
+def wifi_connect(primary):
+    notify("Scanning for WiFi networks")
+    run(["nmcli", "device", "wifi", "rescan"])
+
+    out = run_out(["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY",
+                   "device", "wifi", "list"])
+    networks, best = [], {}
+    for line in out.splitlines():
+        parts = nmcli_fields(line)
+        if len(parts) < 3 or not parts[1]:
+            continue
+        ssid, signal = parts[1], int(parts[2] or 0)
+        security = parts[3] if len(parts) > 3 else ""
+        if ssid not in best or signal > best[ssid][0]:
+            best[ssid] = (signal, security)
+
+    networks = sorted(((ssid, sig, sec) for ssid, (sig, sec) in best.items()),
+                      key=lambda n: n[1], reverse=True)
+    if not networks:
+        notify("No WiFi networks found")
+        return
+
+    active = wifi_current()
+    labels = [f"{ssid}{'   (connected)' if ssid == active else ''}  {sig}%  "
+              f"{sec or 'open'}" for ssid, sig, sec in networks]
+    choice = list_picker("WiFi networks", labels, primary, view_size=12,
+                         subtitle="Sorted by signal, strongest first")
+    if choice is None:
+        return
+
+    ssid, _signal, security = networks[choice]
+    cmd = ["nmcli", "device", "wifi", "connect", ssid]
+    if security and security != "--":
+        password = getpass.getpass(
+            f"{c_fg(primary)}Password for {ssid}: {RST}")
+        if not password:
+            notify("Cancelled", "No password entered")
+            return
+        cmd += ["password", password]
+
+    notify(f"Connecting to {ssid}")
+    if run_ok(cmd):
+        notify("Connected", ssid)
+    else:
+        notify("Connection failed", f"nmcli could not join {ssid}")
+
+
+def wifi_menu(primary):
+    items = ["Turn WiFi on", "Turn WiFi off", "Connect to a network",
+             "Disconnect current network"]
+    while True:
+        choice = list_picker("WiFi", items, primary,
+                             subtitle=f"status: {wifi_status_line()}")
+        if choice is None:
+            return
+        if choice in (0, 1):
+            want = choice == 0
+            if wifi_enabled() == want:
+                notify(f"WiFi already {'on' if want else 'off'}")
+                continue
+            run_ok(["nmcli", "radio", "wifi", "on" if want else "off"])
+            if wait_for(wifi_enabled, want):
+                notify(f"WiFi turned {'on' if want else 'off'}")
+            else:
+                notify("Failed to change WiFi state",
+                       "Is NetworkManager running?")
+        elif choice == 2:
+            wifi_connect(primary)
+        else:
+            device = wifi_device()
+            if not device:
+                notify("No WiFi device found")
+            elif run_ok(["nmcli", "device", "disconnect", device]):
+                notify("WiFi disconnected")
+            else:
+                notify("Could not disconnect WiFi")
+
+
+def bluetooth_powered():
+    return "Powered: yes" in run_out(["bluetoothctl", "show"])
+
+
+def bluetooth_devices():
+    devices = []
+    for line in run_out(["bluetoothctl", "devices"]).splitlines():
+        m = re.match(r"Device\s+([0-9A-F:]{17})\s+(.+)", line, re.I)
+        if m:
+            devices.append((m.group(1), m.group(2)))
+    return devices
+
+
+def bt_connect(primary):
+    if not bluetooth_powered():
+        notify("Bluetooth is off", "Turn it on first")
+        return
+
+    notify("Scanning for Bluetooth devices")
+    run(["bluetoothctl", "--timeout", "6", "scan", "on"])
+
+    devices = bluetooth_devices()
+    if not devices:
+        notify("No Bluetooth devices found")
+        return
+
+    labels = []
+    for mac, name in devices:
+        info = run_out(["bluetoothctl", "info", mac])
+        markers = []
+        if "Connected: yes" in info:
+            markers.append("connected")
+        if "Paired: yes" in info:
+            markers.append("paired")
+        labels.append(f"{name} ({mac})" + (f"  [{' , '.join(markers)}]" if markers else ""))
+
+    choice = list_picker("Bluetooth devices", labels, primary, view_size=12)
+    if choice is None:
+        return
+
+    mac, name = devices[choice]
+    notify(f"Connecting to {name}")
+    if not ("Paired: yes" in run_out(["bluetoothctl", "info", mac])):
+        run_ok(["bluetoothctl", "pair", mac])
+        run_ok(["bluetoothctl", "trust", mac])
+    if run_ok(["bluetoothctl", "connect", mac]):
+        notify("Connected", name)
+    else:
+        notify("Connection failed", f"bluetoothctl could not connect to {name}")
+
+
+def bluetooth_menu(primary):
+    items = ["Turn Bluetooth on", "Turn Bluetooth off", "Connect a device"]
+    while True:
+        choice = list_picker("Bluetooth", items, primary,
+                             subtitle=f"status: {'on' if bluetooth_powered() else 'off'}")
+        if choice is None:
+            return
+        if choice in (0, 1):
+            want = choice == 0
+            if bluetooth_powered() == want:
+                notify(f"Bluetooth already {'on' if want else 'off'}")
+                continue
+            run_ok(["bluetoothctl", "power", "on" if want else "off"])
+            if wait_for(bluetooth_powered, want, tries=25):
+                notify(f"Bluetooth turned {'on' if want else 'off'}")
+            else:
+                notify("Failed to change Bluetooth state",
+                       "Is bluetooth.service running?")
+        else:
+            bt_connect(primary)
+
+
+def connectivity_menu(primary):
+    items = ["WiFi", "Bluetooth"]
+    while True:
+        choice = list_picker("Connectivity", items, primary,
+                             subtitle=f"{wifi_status_line()}  |  bluetooth "
+                                      f"{'on' if bluetooth_powered() else 'off'}")
+        if choice is None:
+            return
+        if choice == 0:
+            wifi_menu(primary)
+        else:
+            bluetooth_menu(primary)
+
+
+# ── Default apps ─────────────────────────────────────────────────────────────
+
+APP_FIELDS = [
+    ("$term", "Terminal"),
+    ("$fileManager", "File manager"),
+    ("$menu", "App launcher"),
+    ("$browser", "Browser"),
+]
+
+
+def read_programs():
+    content = readf(PROGRAMS_CONF)
+    values = {}
+    for var, _label in APP_FIELDS:
+        m = re.search(rf"^set\s+{re.escape(var)}\s+(.+)$", content, re.M)
+        values[var] = m.group(1).strip() if m else ""
+    return content, values
+
+
+def command_exists(value):
+    if not value:
+        return False
+    first = value.split()[0]
+    if first.startswith(("~", "/")):
+        return os.path.exists(os.path.expanduser(first))
+    return shutil.which(first) is not None
+
+
+def default_apps(primary):
+    while True:
+        _content, values = read_programs()
+        labels = [f"{label}: {values[var] or '(unset)'}"
+                  for var, label in APP_FIELDS]
+        choice = list_picker("Default apps", labels, primary,
+                             subtitle="Written to conf/programs.conf, then reloaded")
+        if choice is None:
+            return
+        var, label = APP_FIELDS[choice]
+        new = prompt(f"New {label.lower()} [{values[var]}]: ")
+        if not new:
+            continue
+        if not command_exists(new):
+            notify(f"{label} not saved", f"'{new.split()[0]}' is not in PATH")
+            time.sleep(0.8)
+            continue
+        content, _ = read_programs()
+        if re.search(rf"^set\s+{re.escape(var)}\s+", content, re.M):
+            content = re.sub(rf"^(set\s+{re.escape(var)}\s+).*$",
+                             rf"\g<1>{new}", content, flags=re.M)
+        else:
+            content = content.rstrip("\n") + f"\nset {var} {new}\n"
+        writef(PROGRAMS_CONF, content)
+        run_script(script("reload-config.sh"))
+        notify(f"{label} updated", new)
+        primary = get_primary_color()
+
+
+# ── Monitors ─────────────────────────────────────────────────────────────────
+
+def get_outputs():
+    try:
+        outputs = json.loads(run_out(["swaymsg", "-t", "get_outputs"]))
+        return outputs if isinstance(outputs, list) else []
+    except ValueError:
+        return []
+
+
+def mode_label(mode):
+    hz = mode.get("refresh", 0) / 1000.0
+    hz_str = f"{hz:.3f}".rstrip("0").rstrip(".") if hz else "60"
+    return f"{mode['width']}x{mode['height']}@{hz_str}Hz"
+
+
+def load_monitor_settings():
+    content = readf(MONITORS_CONF)
+    if MANAGED_START not in content or MANAGED_END not in content:
+        return {}
+    inner = content.split(MANAGED_START, 1)[1].split(MANAGED_END, 1)[0]
+    settings = {}
+    for line in inner.splitlines():
+        m = re.match(r"\s*output\s+(\S+)\s+(.*)$", line)
+        if not m:
+            continue
+        name, rest = m.group(1), m.group(2).split()
+        entry = settings.setdefault(name, {})
+        if not rest:
+            continue
+        if rest[0] in ("mode", "scale", "transform") and len(rest) >= 2:
+            entry[rest[0]] = rest[1]
+        elif rest[0] == "position" and len(rest) >= 3:
+            entry["position"] = f"{rest[1]} {rest[2]}"
+        elif rest[0] in ("enable", "disable"):
+            entry["enabled"] = "on" if rest[0] == "enable" else "off"
+    return settings
+
+
+def save_monitor_settings(settings):
+    lines = [MANAGED_START,
+             "# Written by `minimal6` (quicksettings). Hand edits are preserved",
+             "# outside this block; changes here are rewritten on the next save."]
+    for name in sorted(settings):
+        entry = settings[name]
+        for key in ("mode", "position", "scale", "transform"):
+            if key in entry:
+                lines.append(f"output {name} {key} {entry[key]}")
+        if entry.get("enabled") == "on":
+            lines.append(f"output {name} enable")
+        elif entry.get("enabled") == "off":
+            lines.append(f"output {name} disable")
+    lines.append(MANAGED_END)
+    block = "\n".join(lines) + "\n"
+
+    content = readf(MONITORS_CONF)
+    if MANAGED_START in content and MANAGED_END in content:
+        pre = content.split(MANAGED_START, 1)[0]
+        post = content.split(MANAGED_END, 1)[1]
+        new = pre + block + post
+    else:
+        new = content.rstrip("\n") + "\n\n" + block
+    writef(MONITORS_CONF, new)
+
+
+def apply_output(name, settings, **changes):
+    """Apply changes live via swaymsg, then persist them."""
+    entry = settings.setdefault(name, {})
+    entry.update(changes)
+    ok = True
+
+    if "enabled" in changes:
+        ok &= sway_ok("output", name,
+                      "enable" if changes["enabled"] == "on" else "disable")
+    if "mode" in changes:
+        ok &= sway_ok("output", name, "mode", changes["mode"])
+    if "scale" in changes:
+        ok &= sway_ok("output", name, "scale", changes["scale"])
+    if "transform" in changes:
+        ok &= sway_ok("output", name, "transform", changes["transform"])
+    if "position" in changes:
+        x, y = changes["position"].split()
+        ok &= sway_ok("output", name, "position", x, y)
+
+    if ok:
+        save_monitor_settings(settings)
+    return ok
+
+
+def monitor_apply_and_report(name, settings, **changes):
+    if apply_output(name, settings, **changes):
+        notify(f"{name}: updated", "Saved to conf/monitors.conf")
+    else:
+        notify(f"{name}: failed", "swaymsg rejected the change")
+
+
+def output_mode_menu(primary, output, settings):
+    modes, seen = [], set()
+    for mode in sorted(output.get("modes", []),
+                       key=lambda m: (m["width"] * m["height"], m.get("refresh", 0)),
+                       reverse=True):
+        label = mode_label(mode)
+        if label not in seen:
+            seen.add(label)
+            modes.append(label)
+    current = mode_label(output["current_mode"]) if output.get("current_mode") else ""
+    if current and current not in modes:
+        modes.insert(0, current)
+    if not modes:
+        notify("No modes reported", output["name"])
+        return
+
+    labels = [f"{m}   ✓" if m == current else m for m in modes]
+    choice = list_picker(f"{output['name']} — mode", labels, primary,
+                         start=modes.index(current) if current in modes else 0,
+                         view_size=12)
+    if choice is None:
+        return
+    monitor_apply_and_report(output["name"], settings, mode=modes[choice])
+
+
+def output_scale_menu(primary, output, settings):
+    current = str(output.get("scale", 1)).rstrip("0").rstrip(".") \
+        if output.get("scale") else "1"
+    values = list(SCALES)
+    if current not in values:
+        values.insert(0, current)
+    labels = [f"{v}   ✓" if v == current else v for v in values]
+    choice = list_picker(f"{output['name']} — scale", labels, primary,
+                         start=values.index(current))
+    if choice is None:
+        return
+    monitor_apply_and_report(output["name"], settings, scale=values[choice])
+
+
+def output_transform_menu(primary, output, settings):
+    current = output.get("transform", "normal")
+    labels = [f"{t}   ✓" if t == current else t for t in TRANSFORMS]
+    choice = list_picker(f"{output['name']} — rotation", labels, primary,
+                         start=TRANSFORMS.index(current) if current in TRANSFORMS else 0)
+    if choice is None:
+        return
+    monitor_apply_and_report(output["name"], settings, transform=TRANSFORMS[choice])
+
+
+def output_position_menu(output, settings):
+    rect = output.get("rect") or {}
+    current = f"{rect.get('x', 0)} {rect.get('y', 0)}"
+    value = prompt(f"Position for {output['name']} (X Y) [{current}]: ")
+    if not value:
+        return
+    if not re.fullmatch(r"-?\d+\s+-?\d+", value):
+        notify("Invalid position", "Expected two integers, e.g. 0 0")
+        return
+    monitor_apply_and_report(output["name"], settings, position=value)
+
+
+def output_enable_menu(primary, output, settings):
+    active = bool(output.get("active"))
+    if active:
+        accent = get_primary_color()
+        draw(banner_lines(accent, term_size()[1]) + [
+            "",
+            f"{c_fg(accent)}{BOLD}Disable {output['name']}?{RST}",
+            f"{c_fg(accent)}"
+            "If this is your only active output the screen goes black." + RST,
+            "",
+        ])
+        answer = prompt("Type y to disable, anything else to cancel: ")
+        if answer.lower() != "y":
+            return
+        monitor_apply_and_report(output["name"], settings, enabled="off")
+    else:
+        monitor_apply_and_report(output["name"], settings, enabled="on")
+
+
+def output_menu(primary, name, settings):
+    while True:
+        output = next((o for o in get_outputs() if o["name"] == name), None)
+        if output is None:
+            notify(f"{name} disappeared", "Output list changed")
+            return
+        current = output.get("current_mode") or {}
+        subtitle = (f"{current.get('width', '?')}x{current.get('height', '?')} "
+                    f"scale {output.get('scale', 1)} "
+                    f"{output.get('transform', 'normal')} — "
+                    f"{'enabled' if output.get('active') else 'disabled'}")
+        items = ["Mode / resolution", "Scale", "Rotation", "Position",
+                 "Enable / disable"]
+        choice = list_picker(f"Monitor {name}", items, primary,
+                             subtitle=subtitle)
+        if choice is None:
+            return
+        if choice == 0:
+            output_mode_menu(primary, output, settings)
+        elif choice == 1:
+            output_scale_menu(primary, output, settings)
+        elif choice == 2:
+            output_transform_menu(primary, output, settings)
+        elif choice == 3:
+            output_position_menu(output, settings)
+        else:
+            output_enable_menu(primary, output, settings)
+
+
+def monitor_menu(primary):
+    if not in_sway():
+        notify("Monitor settings need a running Sway session")
+        return
+    settings = load_monitor_settings()
+    while True:
+        outputs = get_outputs()
+        if not outputs:
+            notify("Could not read sway outputs")
+            return
+        labels = []
+        for output in outputs:
+            mode = output.get("current_mode") or {}
+            state = "on" if output.get("active") else "off"
+            labels.append(f"{output['name']}  {mode.get('width', '?')}x"
+                          f"{mode.get('height', '?')}@{mode.get('refresh', 0) / 1000:g}Hz"
+                          f"  [{state}]")
+        choice = list_picker("Monitors", labels, primary,
+                             subtitle="Changes apply live and are saved to "
+                                      "conf/monitors.conf")
+        if choice is None:
+            return
+        output_menu(primary, outputs[choice]["name"], settings)
+
+
+# ── Config editing / reload ──────────────────────────────────────────────────
+
+def edit_config():
+    editor = os.environ.get("EDITOR") or "nvim"
+    if not shutil.which(editor.split()[0]):
+        notify(f"{editor} not found", "Install it or set $EDITOR")
+        return
+    # A full-screen editor needs a visible cursor and its own screen.
+    screen_end()
+    clear()
+    print(f"{c_fg(get_primary_color())}Opening {editor} on "
+          f"{SWAY_DIR}/config …{RST}\n")
+    try:
+        code = subprocess.call([*editor.split(), os.path.join(SWAY_DIR, "config")],
+                               cwd=SWAY_DIR)
+    except OSError:
+        notify("Could not launch editor", editor)
+        screen_start()
+        return
+    screen_start()
+    if code == 0:
+        run_script(script("reload-config.sh"))
+        notify("Config saved", "Sway reloaded")
+    else:
+        notify("Editor exited", f"exit code {code}; not reloading")
+
+
+def reload_sway():
+    if not in_sway():
+        notify("Not in a Sway session")
+        return
+    if run_script(script("reload-config.sh")):
+        notify("Sway reloaded")
+    else:
+        notify("Reload failed", "reload-config.sh is missing or failed")
+
+
+# ── Status dump (for --status / debugging) ───────────────────────────────────
+
+def print_status():
+    print(f"colors: {os.path.join(HOME, '.config', 'quickshell', 'generated', 'colors.json')}")
+    print(f"primary: #{get_color('primary', 'ffb4ac')}")
+    print(f"theme mode: {theme_mode()}")
+    for name, status_fn, _set_fn in TOGGLES:
+        print(f"{name.lower():24} {'on' if status_fn() else 'off'}")
+    print(f"wallpaper: {current_wallpaper_name() or '(unknown)'}")
+    print(f"wifi: {wifi_status_line()}")
+    print(f"bluetooth: {'on' if bluetooth_powered() else 'off'}")
+    outputs = get_outputs()
+    if not outputs:
+        print("outputs: (no sway ipc)")
+        return
+    for output in outputs:
+        mode = output.get("current_mode") or {}
+        print(f"output {output['name']}: {mode.get('width', '?')}x"
+              f"{mode.get('height', '?')}@{mode.get('refresh', 0) / 1000:g}Hz "
+              f"scale {output.get('scale', 1)} "
+              f"{output.get('transform', 'normal')} "
+              f"{'enabled' if output.get('active') else 'disabled'}")
+
+
+# ── Main ─────────────────────────────────────────────────────────────────────
+
+def main():
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if arg in ("-h", "--help"):
+            print(__doc__.strip())
+            return 0
+        if arg in ("-s", "--status"):
+            print_status()
+            return 0
+        print(f"unknown argument: {arg}\n", file=sys.stderr)
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+
+    primary = get_primary_color()
+    handlers = [
+        ("Appearance", appearance_menu),
+        ("Toggles", toggles_menu),
+        ("Connectivity", connectivity_menu),
+        ("Default apps", default_apps),
+        ("Monitors", monitor_menu),
+        ("Edit configuration", lambda p: edit_config()),
+        ("Reload Sway", lambda p: reload_sway()),
+    ]
+    screen_start()
+    try:
+        while True:
+            frame_title = ""
+            frame_subtitle = f"{BOLD}minimal6 quicksettings{RST}"
+            choice = list_picker(frame_title, [name for name, _ in handlers],
+                                 primary, back_label="Quit",
+                                 subtitle=frame_subtitle)
+            if choice is None:
+                return 0
+            primary = get_primary_color()
+            handlers[choice][1](primary)
+            primary = get_primary_color()
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        screen_end()
+        clear()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

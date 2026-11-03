@@ -89,6 +89,9 @@ undo_link "$HOME/.themes" ".themes"
 undo_link "$HOME/.icons" ".icons"
 undo_link "$HOME/.bashrc" ".bashrc"
 
+# Quicksettings menu installed into ~/.local/bin by setup.sh
+undo_link "$HOME/.local/bin/minimal6" "quicksettings menu"
+
 # Kvantum themes
 undo_link "$CONF_DIR/Kvantum" "kvantum-themes"
 
