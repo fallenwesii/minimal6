@@ -51,8 +51,8 @@ LIGHT_WALLPAPERS_DIR = os.path.join(WALLPAPERS_DIR, "light-mode")
 
 # Sway/session state. The shell scripts use the same location, so the menu and
 # the keybinds always agree on whether caffeine/gamemode are on.
+CAFFEINE_LOCK = os.path.join("/tmp", f"minimal6-{os.getuid()}", "sway-caffeine")
 RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
-CAFFEINE_LOCK = os.path.join(RUNTIME_DIR, "sway-caffeine")
 GAMEMODE_LOCK = os.path.join(RUNTIME_DIR, "sway-gamemode")
 MODE_FILE = os.path.join(HOME, ".cache", "matugen_mode")
 

@@ -1,5 +1,6 @@
 #!/bin/bash
 notify_id=9902
+# State lives in a per-user, mode-700 directory under /tmp.
 GAMEMODE_LOCK="/tmp/sway-gamemode"
 GAMEMODE_PID_FILE="/tmp/sway-gamemode.pid"
 
