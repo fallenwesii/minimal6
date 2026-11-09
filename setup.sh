@@ -35,7 +35,7 @@ PACMAN_PKGS=(
   "pipewire" "wireplumber" "blueman" "bluez" "bluez-utils"
   "kitty" "alacritty" "dolphin" "yazi" "btop"
   "ttf-jetbrains-mono-nerd" "noto-fonts" "papirus-icon-theme" "qt5-wayland" "qt5ct" "qt6ct"
-  "networkmanager" "network-manager-applet" "base-devel" "xorg-xhost" "quickshell"
+  "networkmanager" "network-manager-applet" "base-devel" "xorg-xhost" "quickshell" "kconfig"
   "neovim" "kvantum" "ghostty" "awww"
   "python3" "python-pyfiglet" "matugen" "autotiling"
   "gsimplecal" "gamemode" "hyprlock" "hyprpicker" "playerctl" "imagemagick" "gnome-keyring"
